@@ -1,0 +1,151 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\ExamMark;
+use App\Models\Student;
+use App\Models\Subject;
+use App\Models\Course;
+use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
+
+class ExamController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $courses = Course::all();
+        $streamScoped = false;
+        $ownOnly = false;
+
+        if ($user->isStudent()) {
+            $ownOnly = true;
+        } elseif ($user->isStaff() && $user->staffProfile) {
+            $assignedCourses = $user->staffProfile->courses;
+            if ($assignedCourses->isNotEmpty()) {
+                $streamScoped = true;
+                $courses = $assignedCourses;
+            }
+        }
+
+        $selectedCourseId = $request->get('course_id', optional($courses->first())->id);
+        if ($streamScoped && ! $courses->contains('id', (int) $selectedCourseId)) {
+            $selectedCourseId = optional($courses->first())->id;
+        }
+        $semester = $request->get('semester', 1);
+
+        $subjects = $selectedCourseId ? Subject::where('course_id', $selectedCourseId)->where('semester', $semester)->get() : collect();
+        $students = $selectedCourseId ? Student::where('course_id', $selectedCourseId)->with('user')->get() : collect();
+
+        $ledgerSemester = $request->get('ledger_semester');
+        $ledgerCourseId = $request->get('ledger_course_id');
+
+        if ($ownOnly) {
+            // A student only ever sees their own marks, across every subject and semester
+            $studentId = optional($user->studentProfile)->id;
+            $marksQuery = ExamMark::with(['student.user', 'subject'])
+                ->where('student_id', $studentId ?? 0);
+
+            if ($ledgerSemester) {
+                $marksQuery->where('semester', $ledgerSemester);
+            }
+        } else {
+            // Exam Marks Ledger — independently filterable by stream/semester ("All" allowed), scoped for restricted faculty
+            $marksQuery = ExamMark::with(['student.user', 'subject'])
+                ->whereHas('student', function ($q) use ($ledgerCourseId, $streamScoped, $courses) {
+                    if ($streamScoped) {
+                        $q->whereIn('course_id', $courses->pluck('id'));
+                    }
+                    if ($ledgerCourseId) {
+                        $q->where('course_id', $ledgerCourseId);
+                    }
+                });
+
+            if ($ledgerSemester) {
+                $marksQuery->where('semester', $ledgerSemester);
+            }
+        }
+
+        $examMarks = $marksQuery->latest()->paginate(20)->withQueryString();
+
+        return view('exams.index', compact(
+            'courses', 'subjects', 'students', 'selectedCourseId', 'semester', 'examMarks',
+            'streamScoped', 'ownOnly', 'ledgerCourseId', 'ledgerSemester'
+        ));
+    }
+
+    public function storeMarks(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'subject_id' => 'required|exists:subjects,id',
+            'semester' => 'required|integer',
+            'internal_marks' => 'required|numeric|min:0|max:40',
+            'external_marks' => 'required|numeric|min:0|max:60',
+        ]);
+
+        $total = $request->internal_marks + $request->external_marks;
+
+        // Determine Grade & Grade Point
+        if ($total >= 90) { $grade = 'O'; $gp = 4.00; }
+        elseif ($total >= 80) { $grade = 'A+'; $gp = 3.80; }
+        elseif ($total >= 70) { $grade = 'A'; $gp = 3.50; }
+        elseif ($total >= 60) { $grade = 'B+'; $gp = 3.00; }
+        elseif ($total >= 50) { $grade = 'B'; $gp = 2.50; }
+        elseif ($total >= 40) { $grade = 'C'; $gp = 2.00; }
+        else { $grade = 'F'; $gp = 0.00; }
+
+        ExamMark::updateOrCreate(
+            [
+                'student_id' => $request->student_id,
+                'subject_id' => $request->subject_id,
+                'semester' => $request->semester,
+            ],
+            [
+                'internal_marks' => $request->internal_marks,
+                'external_marks' => $request->external_marks,
+                'total_marks' => $total,
+                'grade' => $grade,
+                'grade_point' => $gp,
+            ]
+        );
+
+        return redirect()->back()->with('success', "Marks saved & CGPA updated! Total: {$total}/100, Grade: {$grade}");
+    }
+
+    public function viewMarksheet(Student $student)
+    {
+        $this->authorizeStudentSelf($student);
+        $student->load(['user', 'course.department']);
+        $marks = ExamMark::where('student_id', $student->id)->with('subject')->get();
+        $cgpa = $student->calculateCGPA();
+
+        return view('exams.marksheet', compact('student', 'marks', 'cgpa'));
+    }
+
+    public function downloadMarksheetPdf(Student $student)
+    {
+        $this->authorizeStudentSelf($student);
+        $student->load(['user', 'course.department']);
+        $marks = ExamMark::where('student_id', $student->id)->with('subject')->get();
+        $cgpa = $student->calculateCGPA();
+
+        $pdf = Pdf::loadView('exams.marksheet_pdf', compact('student', 'marks', 'cgpa'));
+
+        return $pdf->download("Marksheet-{$student->enrollment_no}.pdf");
+    }
+
+    /**
+     * A student may only ever pull up their own marksheet, even if they guess another
+     * student's URL directly.
+     */
+    private function authorizeStudentSelf(Student $student): void
+    {
+        $user = Auth::user();
+
+        if ($user->isStudent() && optional($user->studentProfile)->id !== $student->id) {
+            abort(403, 'You can only access your own marksheet.');
+        }
+    }
+}
