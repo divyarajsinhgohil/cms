@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\UniqueCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -83,12 +84,17 @@ class StudentController extends Controller
         ]);
 
         $dept = Department::findOrFail($request->department_id);
-        $latestCount = Student::where('department_id', $dept->id)->count() + 1;
-        $enrollmentNo = sprintf('CMS-%d-%s-%05d', $request->batch_year, strtoupper($dept->code), $latestCount);
 
-        $student = Student::create([
+        $student = UniqueCode::create(fn () => Student::create([
             'user_id' => $user->id,
-            'enrollment_no' => $enrollmentNo,
+            'enrollment_no' => sprintf(
+                'CMS-%d-%s-%05d',
+                $request->batch_year,
+                strtoupper($dept->code),
+                UniqueCode::nextSequence(
+                    Student::where('department_id', $dept->id)->orderByDesc('id')->value('enrollment_no')
+                )
+            ),
             'department_id' => $request->department_id,
             'course_id' => $request->course_id,
             'batch_year' => $request->batch_year,
@@ -99,12 +105,12 @@ class StudentController extends Controller
             'guardian_phone' => $request->guardian_phone,
             'address' => $request->address,
             'status' => 'Active',
-        ]);
+        ]));
 
         Student::regenerateRollNumbers($student->course_id, $student->current_semester);
 
         return response()->json([
-            'message' => "Student admitted successfully! Generated Enrollment No: {$enrollmentNo}",
+            'message' => "Student admitted successfully! Generated Enrollment No: {$student->enrollment_no}",
             'data' => $student->load(['user', 'department', 'course']),
         ], 201);
     }

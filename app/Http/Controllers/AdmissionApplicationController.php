@@ -10,6 +10,7 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\UniqueCode;
 
 class AdmissionApplicationController extends Controller
 {
@@ -107,12 +108,17 @@ class AdmissionApplicationController extends Controller
         ]);
 
         $batchYear = now()->year;
-        $latestCount = Student::where('department_id', $department->id)->count() + 1;
-        $enrollmentNo = sprintf('CMS-%d-%s-%05d', $batchYear, strtoupper($department->code), $latestCount);
 
-        $student = Student::create([
+        $student = UniqueCode::create(fn () => Student::create([
             'user_id' => $user->id,
-            'enrollment_no' => $enrollmentNo,
+            'enrollment_no' => sprintf(
+                'CMS-%d-%s-%05d',
+                $batchYear,
+                strtoupper($department->code),
+                UniqueCode::nextSequence(
+                    Student::where('department_id', $department->id)->orderByDesc('id')->value('enrollment_no')
+                )
+            ),
             'department_id' => $department->id,
             'course_id' => $course->id,
             'batch_year' => $batchYear,
@@ -121,7 +127,7 @@ class AdmissionApplicationController extends Controller
             'guardian_name' => $application->father_name,
             'guardian_phone' => $application->father_mobile,
             'address' => $application->permanent_address,
-        ]);
+        ]));
 
         $application->update([
             'status' => 'Approved',

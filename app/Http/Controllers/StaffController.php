@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\StaffProfile;
 use App\Models\Department;
 use App\Models\Course;
+use App\Support\UniqueCode;
 
 class StaffController extends Controller
 {
@@ -85,28 +86,33 @@ class StaffController extends Controller
             'must_change_password' => true,
         ]);
 
-        // 2. Generate Employee ID: EMP-{DEPT}-{SEQ}
+        // 2. Employee ID (EMP-{DEPT}-{SEQ}) is generated per department inside
+        //    a retry so a concurrent hire can't be handed the same number.
         $dept = Department::findOrFail($request->department_id);
-        $count = StaffProfile::where('department_id', $dept->id)->count() + 1;
-        $employeeId = sprintf("EMP-%s-%03d", strtoupper($dept->code), $count);
 
         // 3. Create Staff Profile
-        $staff = StaffProfile::create([
+        $staff = UniqueCode::create(fn () => StaffProfile::create([
             'user_id' => $user->id,
             'department_id' => $request->department_id,
-            'employee_id' => $employeeId,
+            'employee_id' => sprintf(
+                "EMP-%s-%03d",
+                strtoupper($dept->code),
+                UniqueCode::nextSequence(
+                    StaffProfile::where('department_id', $dept->id)->orderByDesc('id')->value('employee_id')
+                )
+            ),
             'designation' => $request->designation,
             'work_field' => $request->work_field,
             'qualification' => $request->qualification,
             'address' => $request->address,
             'salary' => $request->salary,
             'joining_date' => $request->joining_date ?? date('Y-m-d'),
-        ]);
+        ]));
 
         // 4. Assign Streams (Courses) this faculty member is responsible for
         $staff->courses()->sync($request->input('course_ids', []));
 
-        return redirect()->back()->with('success', "Faculty member '{$request->name}' added successfully! Employee ID: {$employeeId}. First-time login password: \"{$defaultPassword}\" (they'll be asked to set their own on first login).");
+        return redirect()->back()->with('success', "Faculty member '{$request->name}' added successfully! Employee ID: {$staff->employee_id}. First-time login password: \"{$defaultPassword}\" (they'll be asked to set their own on first login).");
     }
 
     public function update(Request $request, StaffProfile $staff)

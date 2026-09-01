@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\StaffProfile;
 use App\Models\User;
+use App\Support\UniqueCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -65,23 +66,27 @@ class StaffController extends Controller
         ]);
 
         $dept = Department::findOrFail($request->department_id);
-        $count = StaffProfile::where('department_id', $dept->id)->count() + 1;
-        $employeeId = sprintf('EMP-%s-%03d', strtoupper($dept->code), $count);
 
-        $staff = StaffProfile::create([
+        $staff = UniqueCode::create(fn () => StaffProfile::create([
             'user_id' => $user->id,
             'department_id' => $request->department_id,
-            'employee_id' => $employeeId,
+            'employee_id' => sprintf(
+                'EMP-%s-%03d',
+                strtoupper($dept->code),
+                UniqueCode::nextSequence(
+                    StaffProfile::where('department_id', $dept->id)->orderByDesc('id')->value('employee_id')
+                )
+            ),
             'designation' => $request->designation,
             'work_field' => $request->work_field,
             'qualification' => $request->qualification,
             'address' => $request->address,
             'salary' => $request->salary,
             'joining_date' => $request->joining_date ?? date('Y-m-d'),
-        ]);
+        ]));
 
         return response()->json([
-            'message' => "Faculty member '{$request->name}' added successfully! Employee ID: {$employeeId}",
+            'message' => "Faculty member '{$request->name}' added successfully! Employee ID: {$staff->employee_id}",
             'data' => $staff->load(['user', 'department']),
         ], 201);
     }

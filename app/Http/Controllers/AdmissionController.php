@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Department;
 use App\Models\Course;
 use App\Models\Section;
+use App\Support\UniqueCode;
 
 class AdmissionController extends Controller
 {
@@ -152,10 +153,10 @@ class AdmissionController extends Controller
             'avatar' => $avatarPath,
         ]);
 
-        // 2. Generate Enrollment Number: CMS-{YEAR}-{DEPT}-{SEQ}
+        // 2. Enrollment Number (CMS-{YEAR}-{DEPT}-{SEQ}) is generated per
+        //    department in step 4, inside a retry so a concurrent admission
+        //    can't hand out the same number.
         $dept = Department::findOrFail($request->department_id);
-        $latestCount = Student::where('department_id', $dept->id)->count() + 1;
-        $enrollmentNo = sprintf("CMS-%d-%s-%05d", $request->batch_year, strtoupper($dept->code), $latestCount);
 
         // 3. Resolve optional class section — only honor it if it actually
         // belongs to the chosen stream + semester (defends against a stale
@@ -169,9 +170,16 @@ class AdmissionController extends Controller
         }
 
         // 4. Create Student Profile
-        $student = Student::create([
+        $student = UniqueCode::create(fn () => Student::create([
             'user_id' => $user->id,
-            'enrollment_no' => $enrollmentNo,
+            'enrollment_no' => sprintf(
+                "CMS-%d-%s-%05d",
+                $request->batch_year,
+                strtoupper($dept->code),
+                UniqueCode::nextSequence(
+                    Student::where('department_id', $dept->id)->orderByDesc('id')->value('enrollment_no')
+                )
+            ),
             'department_id' => $request->department_id,
             'course_id' => $request->course_id,
             'batch_year' => $request->batch_year,
@@ -183,7 +191,7 @@ class AdmissionController extends Controller
             'address' => $request->address,
             'section_id' => $sectionId,
             'status' => 'Active',
-        ]);
+        ]));
 
         // 5. Fold the new student into the alphabetical roll number sequence
         // for their stream + semester.

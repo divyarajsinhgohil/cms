@@ -8,6 +8,7 @@ use App\Models\FeePayment;
 use App\Models\Student;
 use App\Models\Course;
 use App\Models\Section;
+use App\Support\UniqueCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class FeeController extends Controller
@@ -93,19 +94,23 @@ class FeeController extends Controller
             'remarks' => 'nullable|string',
         ]);
 
-        $count = FeePayment::count() + 1;
-        $receiptNo = sprintf("REC-%s-%05d", date('Y'), $count);
+        $payment = UniqueCode::create(function () use ($request) {
+            $year = date('Y');
+            $lastReceipt = FeePayment::where('receipt_no', 'like', "REC-{$year}-%")
+                ->orderByDesc('id')->value('receipt_no');
+            $receiptNo = sprintf("REC-%s-%05d", $year, UniqueCode::nextSequence($lastReceipt));
 
-        $payment = FeePayment::create([
-            'student_id' => $request->student_id,
-            'receipt_no' => $receiptNo,
-            'amount_paid' => $request->amount_paid,
-            'payment_mode' => $request->payment_mode,
-            'payment_date' => $request->payment_date,
-            'remarks' => $request->remarks,
-        ]);
+            return FeePayment::create([
+                'student_id' => $request->student_id,
+                'receipt_no' => $receiptNo,
+                'amount_paid' => $request->amount_paid,
+                'payment_mode' => $request->payment_mode,
+                'payment_date' => $request->payment_date,
+                'remarks' => $request->remarks,
+            ]);
+        });
 
-        return redirect()->route('fees.receipt', $payment->id)->with('success', "Payment recorded! Receipt Generated: {$receiptNo}");
+        return redirect()->route('fees.receipt', $payment->id)->with('success', "Payment recorded! Receipt Generated: {$payment->receipt_no}");
     }
 
     public function viewReceipt(FeePayment $payment)
