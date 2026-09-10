@@ -7,10 +7,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
     <style>
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            background: linear-gradient(135deg, #1e1130 0%, #0f172a 50%, #1e293b 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -18,25 +18,28 @@
         }
         .card-custom {
             background: #ffffff;
-            border-radius: 1.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            border-radius: var(--cms-radius-2xl);
+            box-shadow: var(--cms-shadow-2xl);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             overflow: hidden;
             width: 100%;
             max-width: 480px;
         }
         .card-header-custom {
-            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+            background: var(--cms-gradient-brand);
             padding: 2.5rem 2rem 2rem;
             color: #ffffff;
             text-align: center;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/campus.css') }}?v={{ filemtime(public_path('css/campus.css')) }}">
 </head>
-<body>
+<body class="campus-auth">
+    <div class="brand-strip fixed-top"></div>
 
-    <div class="card-custom">
+    <div class="card-custom animate-fade-up">
         <div class="card-header-custom">
-            <i class="fa-solid fa-shield-key text-warning display-4 mb-2"></i>
+            <i class="fa-solid fa-shield-halved text-warning fs-1 mb-2" aria-hidden="true"></i>
             <h3 class="fw-bold mb-1">Set & Confirm New Password</h3>
             <p class="text-white-50 small mb-0">Welcome, {{ Auth::user()->name }}! Please update your default password to secure your account.</p>
         </div>
@@ -67,7 +70,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 py-2.5 fw-bold rounded-3 shadow-sm">
+                <button type="submit" class="btn btn-gradient-primary w-100 py-2.5 fw-bold rounded-3 shadow-sm">
                     <i class="fa-solid fa-circle-check me-2"></i> Confirm Password & Enter Dashboard
                 </button>
             </form>

@@ -251,39 +251,40 @@
                 </div>
                 <div class="modal-body">
                     <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-3">
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted">1. Stream</label>
+                            <label class="form-label fw-bold small text-muted">1. Stream (Optional)</label>
                             <select id="payFilterCourse" class="form-select">
-                                <option value="">Select stream...</option>
+                                <option value="">All Streams</option>
                                 @foreach($courses as $course)
                                     <option value="{{ $course->id }}">{{ $course->name }} ({{ $course->code }})</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted">2. Semester</label>
-                            <select id="payFilterSemester" class="form-select" disabled>
-                                <option value="">Select semester...</option>
+                            <label class="form-label fw-bold small text-muted">2. Semester (Optional)</label>
+                            <select id="payFilterSemester" class="form-select">
+                                <option value="">All Semesters</option>
                                 @for($s = 1; $s <= 8; $s++)
                                     <option value="{{ $s }}">Semester {{ $s }}</option>
                                 @endfor
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted">3. Class / Section</label>
-                            <select id="payFilterSection" class="form-select" disabled>
+                            <label class="form-label fw-bold small text-muted">3. Class / Section (Optional)</label>
+                            <select id="payFilterSection" class="form-select">
                                 <option value="">All Sections</option>
                             </select>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">4. Select Student</label>
+                        <label class="form-label fw-bold">4. Select Student <span class="text-danger">*</span></label>
                         <select name="student_id" id="payStudentSelect" class="form-select" required>
-                            <option value="">Choose stream & semester first...</option>
+                            <option value="">Search or select student...</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Amount Paid (₹)</label>
+                        <label class="form-label fw-bold">Amount Paid (₹) <span class="text-danger">*</span></label>
                         <input type="number" name="amount_paid" class="form-control" placeholder="45000" required>
                     </div>
                     <div class="mb-3">
@@ -325,11 +326,12 @@
                     removeItemButton: false,
                     searchEnabled: true,
                     shouldSort: false,
-                    placeholderValue: 'Choose stream & semester first...',
+                    placeholderValue: 'Search or select student...',
                     noResultsText: 'No matching students found',
-                    noChoicesText: 'No students found for this filter',
+                    noChoicesText: 'No students found',
                 });
             }
+            cmsRenderPayStudents();
         });
 
         document.getElementById('payFilterCourse').addEventListener('change', cmsUpdatePayFilters);
@@ -339,29 +341,20 @@
 
     function cmsUpdatePayFilters() {
         const courseId = document.getElementById('payFilterCourse').value;
-        const semesterSel = document.getElementById('payFilterSemester');
+        const semester = document.getElementById('payFilterSemester').value;
         const sectionSel = document.getElementById('payFilterSection');
 
-        semesterSel.disabled = !courseId;
-        if (!courseId) {
-            semesterSel.value = '';
-            sectionSel.disabled = true;
+        if (!courseId && !semester) {
             sectionSel.innerHTML = '<option value="">All Sections</option>';
-            cmsRenderPayStudents();
-            return;
+        } else {
+            const matchingSections = cmsFeeSections.filter(sec => {
+                if (courseId && String(sec.course_id) !== String(courseId)) return false;
+                if (semester && String(sec.semester) !== String(semester)) return false;
+                return true;
+            });
+            sectionSel.innerHTML = '<option value="">All Sections</option><option value="unassigned">Unassigned</option>' +
+                matchingSections.map(sec => `<option value="${sec.id}">Section ${sec.name}</option>`).join('');
         }
-
-        const semester = semesterSel.value;
-        sectionSel.disabled = !semester;
-        if (!semester) {
-            sectionSel.innerHTML = '<option value="">All Sections</option>';
-            cmsRenderPayStudents();
-            return;
-        }
-
-        const matchingSections = cmsFeeSections.filter(sec => String(sec.course_id) === String(courseId) && String(sec.semester) === String(semester));
-        sectionSel.innerHTML = '<option value="">All Sections</option><option value="unassigned">Unassigned</option>' +
-            matchingSections.map(sec => `<option value="${sec.id}">Section ${sec.name}</option>`).join('');
 
         cmsRenderPayStudents();
     }
@@ -380,16 +373,16 @@
         if (!cmsPayChoices) return;
 
         cmsPayChoices.clearStore();
-        if (!courseId || !semester) {
-            cmsPayChoices.setChoices([{ value: '', label: 'Choose stream & semester first...', selected: true, disabled: true }], 'value', 'label', true);
-            return;
-        }
+
         if (list.length === 0) {
             cmsPayChoices.setChoices([{ value: '', label: 'No students found for this filter', selected: true, disabled: true }], 'value', 'label', true);
             return;
         }
 
-        const options = list.map(s => ({ value: String(s.id), label: `${s.name} (${s.enrollment_no})` }));
+        const options = [
+            { value: '', label: 'Search or select student...', selected: true, disabled: true },
+            ...list.map(s => ({ value: String(s.id), label: `${s.name} (${s.enrollment_no})` }))
+        ];
         cmsPayChoices.setChoices(options, 'value', 'label', true);
     }
 </script>

@@ -10,9 +10,12 @@ use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Course;
 use App\Models\Section;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\AlertDispatchService;
 
 class AttendanceController extends Controller
 {
+    public function __construct(private AlertDispatchService $alerts) {}
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -126,6 +129,7 @@ class AttendanceController extends Controller
         }
 
         $markedBy = $user->id;
+        $subject = Subject::find($request->subject_id);
 
         foreach ($request->attendance as $studentId => $status) {
             Attendance::updateOrCreate(
@@ -139,8 +143,121 @@ class AttendanceController extends Controller
                     'marked_by' => $markedBy,
                 ]
             );
+
+            $student = Student::with('user')->find($studentId);
+            if ($student) {
+                $this->alerts->notifyAttendanceMarked(
+                    $student,
+                    optional($subject)->name ?? 'Subject',
+                    $request->date,
+                    $status
+                );
+
+                // Automated WhatsApp Absence Alert
+                if ($status === 'absent') {
+                    $settings = \App\Models\SiteSetting::current();
+                    if ($settings->whatsapp_auto_attendance_alert && optional($student->user)->phone) {
+                        $subjectName = optional($subject)->name ?? 'Subject';
+                        app(\App\Services\WhatsAppService::class)->sendDirectMessage(
+                            $student->user->phone,
+                            "Notice: Student {$student->user->name} was marked ABSENT for {$subjectName} on {$request->date}. Please contact college administration if you have questions.",
+                            $student->user->name,
+                            'attendance_alert'
+                        );
+                    }
+                }
+            }
         }
 
-        return redirect()->back()->with('success', 'Daily attendance marked and percentages recalculated successfully!');
+        // Real-Time Broadcast to Students
+        $subjectName = optional($subject)->name ?? 'Subject';
+        \App\Models\BroadcastMessage::dispatchSystemMessage(
+            "📋 Daily Attendance Recorded: {$subjectName}",
+            "Daily attendance for {$subjectName} on {$request->date} has been recorded.",
+            'student',
+            'info',
+            'toast',
+            route('attendance.index')
+        );
+
+        return redirect()->back()->with('success', 'Daily attendance marked & broadcasted live! Percentages recalculated successfully.');
+    }
+
+    public function downloadPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'course_id' => ['required', 'integer', 'exists:courses,id'],
+            'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+            'section_id' => ['nullable', function ($attribute, $value, $fail) {
+                if ($value !== 'unassigned' && ! Section::whereKey($value)->exists()) {
+                    $fail('The selected section is invalid.');
+                }
+            }],
+            'date' => ['required', 'date'],
+        ]);
+
+        $user = Auth::user();
+        $course = Course::findOrFail($validated['course_id']);
+
+        if ($user->isStaff() && $user->staffProfile) {
+            $assignedCourseIds = $user->staffProfile->courses->pluck('id');
+            if ($assignedCourseIds->isNotEmpty() && ! $assignedCourseIds->contains($course->id)) {
+                abort(403, 'You are not assigned to this stream.');
+            }
+        }
+
+        $subject = Subject::where('course_id', $course->id)->findOrFail($validated['subject_id']);
+        $sectionId = $validated['section_id'] ?? null;
+        $section = is_numeric($sectionId)
+            ? Section::where('course_id', $course->id)
+                ->where('semester', $subject->semester)
+                ->findOrFail($sectionId)
+            : null;
+
+        $studentsQuery = Student::where('course_id', $course->id)
+            ->where('current_semester', $subject->semester)
+            ->where('status', 'Active')
+            ->with('user')
+            ->withCount([
+                'attendances as attendance_total',
+                'attendances as attendance_present' => fn ($query) => $query->whereIn('status', ['present', 'late']),
+            ]);
+
+        if ($sectionId === 'unassigned') {
+            $studentsQuery->whereNull('section_id');
+        } elseif ($section) {
+            $studentsQuery->where('section_id', $section->id);
+        }
+
+        $students = $studentsQuery->orderByRaw('roll_no IS NULL')->orderBy('roll_no')->get();
+        $statuses = Attendance::where('subject_id', $subject->id)
+            ->where('date', $validated['date'])
+            ->whereIn('student_id', $students->pluck('id'))
+            ->pluck('status', 'student_id');
+
+        $summary = [
+            'present' => $statuses->filter(fn ($status) => $status === 'present')->count(),
+            'absent' => $statuses->filter(fn ($status) => $status === 'absent')->count(),
+            'late' => $statuses->filter(fn ($status) => $status === 'late')->count(),
+            'unmarked' => $students->count() - $statuses->count(),
+        ];
+
+        $pdf = Pdf::loadView('attendance.report_pdf', [
+            'course' => $course,
+            'subject' => $subject,
+            'section' => $section,
+            'sectionId' => $sectionId,
+            'date' => $validated['date'],
+            'students' => $students,
+            'statuses' => $statuses,
+            'summary' => $summary,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download(sprintf(
+            'Attendance-%s-%s-%s.pdf',
+            $subject->code,
+            $validated['date'],
+            $section?->name ? 'Section-'.$section->name : ($sectionId === 'unassigned' ? 'Unassigned' : 'All-Sections')
+        ));
     }
 }

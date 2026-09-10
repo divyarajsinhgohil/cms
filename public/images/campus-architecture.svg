@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="300" viewBox="0 0 640 300" fill="none">
+  <circle cx="459" cy="80" r="53" fill="#CBB889" fill-opacity=".17"/>
+  <path d="M0 265h640M25 275h590M90 285h460" stroke="#CBB889" stroke-opacity=".4"/>
+  <g stroke="#C2CFB6" stroke-width="1.4">
+    <path d="M115 264V146h410v118M95 146h450l-17-15H112l-17 15ZM241 130V97h158v33M230 97l90-52 90 52H230ZM284 65V41h72v24M310 41V20h20v21M320 20V4l35 8-35 8"/>
+    <path d="M275 264V167h90v97M267 167h106v-12H267v12ZM300 264v-55a20 20 0 0 1 40 0v55M316 212v51M280 173v85M360 173v85"/>
+    <circle cx="320" cy="83" r="11"/><path d="M320 75v8l5 4"/>
+    <path d="M135 171h25v38h-25zM185 171h25v38h-25zM430 171h25v38h-25zM480 171h25v38h-25zM135 226h25v38h-25zM185 226h25v38h-25zM430 226h25v38h-25zM480 226h25v38h-25zM148 171v38M198 171v38M443 171v38M493 171v38M135 190h25M185 190h25M430 190h25M480 190h25"/>
+    <path d="M70 264v-95M70 230c-55-10-36-67 0-79 36 12 55 69 0 79ZM570 264v-95M570 230c-55-10-36-67 0-79 36 12 55 69 0 79M53 203l17 16 18-25M553 203l17 16 18-25" stroke-opacity=".5"/>
+  </g>
+  <path d="M245 264h150l22 21H223l22-21Z" fill="#CBB889" fill-opacity=".12"/>
+  <path d="M0 290h640" stroke="#CBB889" stroke-opacity=".15"/>
+</svg>

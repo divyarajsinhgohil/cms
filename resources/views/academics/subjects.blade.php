@@ -3,12 +3,17 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h3 class="fw-bold mb-1">Subjects & Curriculum Master</h3>
-        <p class="text-muted mb-0">Manage course subject modules across semesters with Add, Edit, Delete, and Filters.</p>
+        <h3 class="fw-bold mb-1">Subjects & Faculty Mapping Master</h3>
+        <p class="text-muted mb-0">Manage course subjects across semesters and assign faculty teachers to each subject.</p>
     </div>
-    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
-        <i class="fa-solid fa-book-open me-1"></i> Add New Subject
-    </button>
+    <div class="d-flex gap-2">
+        <a href="{{ route('academics.syllabi') }}" class="btn btn-outline-danger shadow-sm fw-semibold">
+            <i class="fa-solid fa-file-pdf me-1"></i> Upload Semester Syllabi
+        </a>
+        <button class="btn btn-primary shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
+            <i class="fa-solid fa-book-open me-1"></i> Add New Subject
+        </button>
+    </div>
 </div>
 
 <!-- Filter Bar -->
@@ -17,7 +22,7 @@
         <form action="{{ route('academics.subjects') }}" method="GET" class="row g-3">
             <div class="col-md-4">
                 <select name="course_id" class="form-select" onchange="this.form.submit()">
-                    <option value="">All Degree Courses</option>
+                    <option value="">All Degree Courses / Streams</option>
                     @foreach($courses as $course)
                         <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
                             {{ $course->name }} ({{ $course->code }})
@@ -53,26 +58,40 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Subject Code</th>
+                        <th class="ps-4">Subject Code</th>
                         <th>Subject Title</th>
                         <th>Associated Course Program</th>
                         <th>Semester</th>
+                        <th>Assigned Faculty Teacher</th>
                         <th>Credits</th>
-                        <th class="text-end">Actions</th>
+                        <th class="text-end pe-4">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($subjects as $sub)
                     <tr>
-                        <td><span class="badge bg-primary font-monospace fs-7">{{ $sub->code }}</span></td>
+                        <td class="ps-4"><span class="badge bg-primary font-monospace fs-7">{{ $sub->code }}</span></td>
                         <td class="fw-bold text-dark">{{ $sub->name }}</td>
                         <td>
                             <span class="badge bg-light text-dark border me-1">{{ optional($sub->course)->code }}</span>
                             <span class="fs-7 text-muted">{{ optional($sub->course)->name }}</span>
                         </td>
                         <td><span class="badge bg-warning-subtle text-dark border border-warning-subtle">Semester {{ $sub->semester }}</span></td>
+                        <td>
+                            @if($sub->teacher)
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="{{ $sub->teacher->avatar ?? 'https://ui-avatars.com/api/?name='.urlencode($sub->teacher->name) }}" class="rounded-circle border" width="28" height="28">
+                                    <div>
+                                        <div class="fw-semibold text-dark fs-7">{{ $sub->teacher->name }}</div>
+                                        <div class="text-muted fs-8">{{ optional($sub->teacher->staffProfile)->designation ?? 'Faculty' }}</div>
+                                    </div>
+                                </div>
+                            @else
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Unassigned</span>
+                            @endif
+                        </td>
                         <td><span class="badge bg-info-subtle text-info font-monospace">{{ $sub->credits }} Credits</span></td>
-                        <td class="text-end">
+                        <td class="text-end pe-4">
                             <div class="d-flex gap-1 justify-content-end">
                                 <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSubjectModal{{ $sub->id }}">
                                     <i class="fa-solid fa-pen-to-square me-1"></i> Edit
@@ -96,12 +115,12 @@
                                     @csrf
                                     @method('PUT')
                                     <div class="modal-header">
-                                        <h5 class="modal-title fw-bold">Edit Subject: {{ $sub->name }}</h5>
+                                        <h5 class="modal-title fw-bold">Edit Subject & Assign Faculty</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
                                         <div class="mb-3">
-                                            <label class="form-label fw-bold">Course Program</label>
+                                            <label class="form-label fw-bold">Course Program / Stream</label>
                                             <select name="course_id" class="form-select" required>
                                                 @foreach($courses as $c)
                                                     <option value="{{ $c->id }}" {{ $sub->course_id == $c->id ? 'selected' : '' }}>
@@ -127,6 +146,17 @@
                                             <input type="text" name="code" class="form-control font-monospace" value="{{ $sub->code }}" required>
                                         </div>
                                         <div class="mb-3">
+                                            <label class="form-label fw-bold">Assigned Faculty Teacher</label>
+                                            <select name="teacher_id" class="form-select">
+                                                <option value="">-- Select Teaching Faculty Member --</option>
+                                                @foreach($facultyUsers as $fac)
+                                                    <option value="{{ $fac->id }}" {{ $sub->teacher_id == $fac->id ? 'selected' : '' }}>
+                                                        {{ $fac->name }} ({{ optional($fac->staffProfile)->designation ?? ucfirst($fac->role) }}) - {{ $fac->email }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
                                             <label class="form-label fw-bold">Credits</label>
                                             <input type="number" name="credits" class="form-control" value="{{ $sub->credits }}" required>
                                         </div>
@@ -141,7 +171,7 @@
                     </div>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-5">No subjects found matching filter.</td>
+                        <td colspan="7" class="text-center text-muted py-5">No subjects found matching filter.</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -157,12 +187,12 @@
             <form action="{{ route('academics.subjects.store') }}" method="POST">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-book-open text-primary me-2"></i> Add Subject Module</h5>
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-book-open text-primary me-2"></i> Add Subject & Map Faculty</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Course Program</label>
+                        <label class="form-label fw-bold">Course Program / Stream</label>
                         <select name="course_id" class="form-select" required>
                             @foreach($courses as $c)
                                 <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }})</option>
@@ -179,11 +209,22 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Subject Title</label>
-                        <input type="text" name="name" class="form-control" placeholder="e.g. Financial Accounting & Auditing" required>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Data Structures & Algorithms" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Subject Code</label>
-                        <input type="text" name="code" class="form-control font-monospace" placeholder="e.g. BCOM101, MCA301, BCA201" required>
+                        <input type="text" name="code" class="form-control font-monospace" placeholder="e.g. BCA301, MCA102, CSE401" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Assign Faculty Teacher</label>
+                        <select name="teacher_id" class="form-select">
+                            <option value="">-- Select Teaching Faculty Member --</option>
+                            @foreach($facultyUsers as $fac)
+                                <option value="{{ $fac->id }}">
+                                    {{ $fac->name }} ({{ optional($fac->staffProfile)->designation ?? ucfirst($fac->role) }}) - {{ $fac->email }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Academic Credits</label>
@@ -192,7 +233,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-bold">Create Subject</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Create Subject & Assign Faculty</button>
                 </div>
             </form>
         </div>

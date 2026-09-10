@@ -30,14 +30,21 @@
     @endif
 </div>
 
+    @if($ownOnly)
+    <div class="mb-3">
+        <div class="btn-group" role="group" aria-label="Timetable view">
+            <a href="{{ route('timetables.index', ['view' => 'grid']) }}" class="btn btn-sm {{ ($viewMode ?? 'grid') === 'grid' ? 'btn-primary' : 'btn-outline-primary' }}">Weekly Grid</a>
+            <a href="{{ route('timetables.index', ['view' => 'calendar', 'month' => ($calendarMonth ?? now())->format('Y-m')]) }}" class="btn btn-sm {{ ($viewMode ?? 'grid') === 'calendar' ? 'btn-primary' : 'btn-outline-primary' }}">Calendar</a>
+        </div>
+    </div>
+    @endif
 @unless($ownOnly)
-<!-- Filter Bar -->
 <div class="card border-0 shadow-sm rounded-4 mb-4">
     <div class="card-body">
         <form action="{{ route('timetables.index') }}" method="GET" class="row g-3 align-items-end">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Select Course</label>
-                <select name="course_id" class="form-select" onchange="this.form.submit()">
+            <div class="col-md-4">
+                <label class="form-label fw-bold" for="course_id">Select Course</label>
+                <select name="course_id" id="course_id" class="form-select" onchange="this.form.submit()">
                     @foreach($courses as $course)
                         <option value="{{ $course->id }}" {{ $selectedCourseId == $course->id ? 'selected' : '' }}>
                             {{ $course->name }} ({{ $course->code }})
@@ -45,14 +52,27 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Select Semester</label>
-                <select name="semester" class="form-select" onchange="this.form.submit()">
+            <div class="col-md-3">
+                <label class="form-label fw-bold" for="semester">Select Semester</label>
+                <select name="semester" id="semester" class="form-select" onchange="this.form.submit()">
                     @for($s = 1; $s <= 6; $s++)
                         <option value="{{ $s }}" {{ $semester == $s ? 'selected' : '' }}>Semester {{ $s }}</option>
                     @endfor
                 </select>
             </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold" for="view">View</label>
+                <select name="view" id="view" class="form-select" onchange="this.form.submit()">
+                    <option value="grid" {{ ($viewMode ?? 'grid') === 'grid' ? 'selected' : '' }}>Weekly Grid</option>
+                    <option value="calendar" {{ ($viewMode ?? 'grid') === 'calendar' ? 'selected' : '' }}>Calendar View</option>
+                </select>
+            </div>
+            @if(($viewMode ?? 'grid') === 'calendar')
+            <div class="col-md-2">
+                <label class="form-label fw-bold" for="month">Month</label>
+                <input type="month" name="month" id="month" class="form-control" value="{{ $calendarMonth->format('Y-m') }}" onchange="this.form.submit()">
+            </div>
+            @endif
         </form>
     </div>
 </div>
@@ -77,7 +97,9 @@
                         {{ optional($slot->subject)->name }}
                         <span class="badge {{ $slot->type === 'Lab' ? 'bg-info' : 'bg-primary' }} fs-7 ms-1">{{ $slot->type }}</span>
                     </div>
-                    <div class="text-muted fs-7"><i class="fa-solid fa-user-tie me-1"></i> {{ optional($slot->staff)->name }}</div>
+                    @if($slot->classroom)
+                        <div class="text-muted fs-7"><i class="fa-solid fa-door-open me-1"></i> {{ $slot->classroom }}</div>
+                    @endif
                 @endif
             </div>
             @endforeach
@@ -86,56 +108,101 @@
 </div>
 @endif
 
+@if(($viewMode ?? 'grid') === 'calendar')
+<!-- Calendar View -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white py-3 border-0">
+        <h2 class="h5 fw-bold mb-0"><i class="fa-solid fa-calendar text-primary me-2" aria-hidden="true"></i> {{ $calendarMonth->format('F Y') }} Calendar</h2>
+    </div>
+    <div class="card-body">
+        <div class="cms-calendar-grid" role="grid" aria-label="Monthly timetable calendar">
+            @php
+                $calStart = $calendarMonth->copy()->startOfMonth()->startOfWeek(\Illuminate\Support\Carbon::MONDAY);
+                $calEnd = $calendarMonth->copy()->endOfMonth()->endOfWeek(\Illuminate\Support\Carbon::SUNDAY);
+            @endphp
+            @for($day = $calStart->copy(); $day->lte($calEnd); $day->addDay())
+                @php $key = $day->toDateString(); $slots = $calendarEvents[$key] ?? collect(); @endphp
+                <div class="cms-calendar-day {{ $day->isToday() ? 'is-today' : '' }} {{ !$day->isSameMonth($calendarMonth) ? 'opacity-50' : '' }}" role="gridcell">
+                    <div class="fw-bold small mb-1">{{ $day->format('D j') }}</div>
+                    @foreach($slots as $slot)
+                        <div class="cms-calendar-slot" title="{{ optional($slot->subject)->name }}">
+                            {{ \Illuminate\Support\Str::limit($slot->start_time, 5, '') }}
+                            {{ $slot->type === 'Break' ? ($slot->label ?: 'Break') : optional($slot->subject)->code }}
+                            @if($slot->classroom)<span class="text-muted"> · {{ $slot->classroom }}</span>@endif
+                        </div>
+                    @endforeach
+                </div>
+            @endfor
+        </div>
+    </div>
+</div>
+@else
 <!-- Timetable Grid -->
 <div class="card border-0 shadow-sm rounded-4">
     <div class="card-header bg-white py-3 border-0">
         <h5 class="fw-bold mb-0"><i class="fa-solid fa-calendar-days text-primary me-2"></i> Regular Weekly Schedule</h5>
     </div>
     <div class="card-body p-0">
+        @php
+            // Distinct time periods across the week, sorted by start time — these become the columns.
+            $periods = $timetables
+                ->map(fn ($t) => ['start' => $t->start_time, 'end' => $t->end_time])
+                ->unique(fn ($p) => $p['start'].'|'.$p['end'])
+                ->sortBy('start')
+                ->values();
+        @endphp
         <div class="table-responsive">
-            <table class="table table-bordered align-middle mb-0">
-                <thead class="table-dark text-center">
+            <table class="table table-bordered align-middle mb-0 text-center">
+                <thead class="table-dark">
                     <tr>
-                        <th width="15%">Day</th>
-                        <th>Scheduled Slots</th>
+                        <th style="min-width: 110px;">Time</th>
+                        @foreach($days as $day)
+                            <th style="min-width: 150px;">{{ $day }}</th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($days as $day)
-                    @php
-                        $daySlots = $timetables->where('day_of_week', $day);
-                    @endphp
+                    @forelse($periods as $p)
                     <tr>
-                        <td class="fw-bold text-center bg-light">{{ $day }}</td>
-                        <td>
-                            <div class="d-flex flex-wrap gap-3">
-                                @forelse($daySlots as $slot)
-                                <div class="p-3 bg-light rounded-3 border-start border-4 {{ $slot->type === 'Break' ? 'border-secondary' : ($slot->type === 'Lab' ? 'border-info' : 'border-primary') }} shadow-sm flex-fill" style="min-width: 220px;">
-                                    <div class="mb-1">
-                                        <span class="badge bg-dark font-monospace">{{ $slot->start_time }} - {{ $slot->end_time }}</span>
-                                    </div>
-                                    @if($slot->type === 'Break')
-                                        <div class="fw-bold text-muted"><i class="fa-solid fa-mug-hot me-1"></i> {{ $slot->label ?: 'Break' }}</div>
-                                    @else
-                                        <div class="fw-bold text-dark mb-1">
-                                            {{ optional($slot->subject)->name }}
-                                            <span class="badge {{ $slot->type === 'Lab' ? 'bg-info' : 'bg-primary' }} fs-7 ms-1">{{ $slot->type }}</span>
-                                        </div>
-                                        <div class="text-muted fs-7"><i class="fa-solid fa-user-tie me-1"></i> {{ optional($slot->staff)->name }}</div>
-                                    @endif
-                                </div>
-                                @empty
-                                <span class="text-muted small py-2">No slots scheduled.</span>
-                                @endforelse
-                            </div>
+                        <td class="fw-bold bg-light font-monospace fs-7">
+                            {{ \Illuminate\Support\Str::limit($p['start'], 5, '') }} - {{ \Illuminate\Support\Str::limit($p['end'], 5, '') }}
                         </td>
+                        @foreach($days as $day)
+                            @php
+                                $slot = $timetables->first(fn ($t) =>
+                                    $t->day_of_week === $day
+                                    && $t->start_time == $p['start']
+                                    && $t->end_time == $p['end']
+                                );
+                            @endphp
+                            <td class="{{ $slot ? ($slot->type === 'Break' ? 'bg-light' : '') : '' }}">
+                                @if($slot)
+                                    @if($slot->type === 'Break')
+                                        <div class="fw-semibold text-muted"><i class="fa-solid fa-mug-hot me-1"></i> {{ $slot->label ?: 'Break' }}</div>
+                                    @else
+                                        <div class="fw-bold text-dark">{{ optional($slot->subject)->name }}</div>
+                                        <span class="badge {{ $slot->type === 'Lab' ? 'bg-info' : 'bg-primary' }} fs-7">{{ $slot->type }}</span>
+                                        @if($slot->classroom)
+                                            <div class="text-muted fs-7 mt-1"><i class="fa-solid fa-door-open me-1"></i> {{ $slot->classroom }}</div>
+                                        @endif
+                                    @endif
+                                @else
+                                    <span class="text-muted">&mdash;</span>
+                                @endif
+                            </td>
+                        @endforeach
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="{{ count($days) + 1 }}" class="text-muted small">No slots scheduled.</td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+@endif
 
 <!-- Modal: New Slot -->
 <div class="modal fade" id="newSlotModal" tabindex="-1">
@@ -174,12 +241,16 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Faculty Member</label>
-                            <select name="staff_id" class="form-select">
+                            <label class="form-label fw-bold" for="staff_id">Faculty Member</label>
+                            <select name="staff_id" id="staff_id" class="form-select">
                                 @foreach($staffMembers as $st)
                                     <option value="{{ $st->id }}">{{ $st->name }}</option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" for="classroom">Classroom / Room</label>
+                            <input type="text" name="classroom" id="classroom" class="form-control" placeholder="e.g. Room 101, Lab 3">
                         </div>
                     </div>
                     <div id="slotBreakField" class="d-none mb-3">
@@ -220,8 +291,8 @@
                             <input type="time" name="end_time" class="form-control" value="10:30" required>
                         </div>
                     </div>
-                    <div class="alert alert-warning py-2 fs-7 mb-0">
-                        <i class="fa-solid fa-shield-halved me-1"></i> <strong>Clash Prevention:</strong> The system checks this faculty member isn't already booked at this time.
+                    <div class="alert alert-warning py-2 fs-7 mb-0" role="status">
+                        <i class="fa-solid fa-shield-halved me-1" aria-hidden="true"></i> <strong>Clash Prevention:</strong> Faculty and room conflicts are blocked before saving.
                     </div>
                 </div>
                 <div class="modal-footer">

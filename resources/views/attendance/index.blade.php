@@ -6,6 +6,11 @@
         <h3 class="fw-bold mb-1">Daily Attendance & Attendance Percentage Report</h3>
         <p class="text-muted mb-0">Mark daily student attendance and track low attendance warning indicators.</p>
     </div>
+    @if($selectedCourseId && $selectedSubjectId)
+        <a href="{{ route('attendance.pdf', ['course_id' => $selectedCourseId, 'subject_id' => $selectedSubjectId, 'section_id' => $selectedSectionId, 'date' => $date]) }}" class="btn btn-danger shadow-sm">
+            <i class="fa-solid fa-file-pdf me-1"></i> Download Attendance PDF
+        </a>
+    @endif
 </div>
 
 <!-- Filter Bar -->

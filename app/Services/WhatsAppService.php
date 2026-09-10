@@ -116,4 +116,79 @@ class WhatsAppService
             'hint' => $hint,
         ];
     }
+
+    /**
+     * Send direct free-form or automated notification WhatsApp message with logging.
+     */
+    public function sendDirectMessage(string $to, string $messageText, ?string $recipientName = null, string $type = 'direct'): array
+    {
+        $settings = SiteSetting::current();
+        $formattedPhone = preg_replace('/[^\d+]/', '', $to);
+        if (empty($formattedPhone)) {
+            return ['success' => false, 'error' => 'Invalid phone number'];
+        }
+
+        if (! $settings->hasWhatsAppConfigured()) {
+            // Simulated Dispatch Log when Meta Cloud API credentials are not yet set
+            $log = \App\Models\WhatsAppLog::create([
+                'recipient_phone' => $formattedPhone,
+                'recipient_name' => $recipientName ?? 'Recipient',
+                'type' => $type,
+                'message' => $messageText,
+                'status' => 'Delivered',
+                'message_id' => 'sim_'.uniqid(),
+                'error_details' => 'Simulated dispatch (Meta API credentials unset)',
+            ]);
+
+            return ['success' => true, 'message_id' => $log->message_id, 'simulated' => true];
+        }
+
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'recipient_type' => 'individual',
+            'to' => $formattedPhone,
+            'type' => 'text',
+            'text' => [
+                'preview_url' => false,
+                'body' => $messageText,
+            ],
+        ];
+
+        try {
+            $response = Http::withToken($settings->whatsapp_access_token)
+                ->timeout(30)
+                ->post("https://graph.facebook.com/v20.0/{$settings->whatsapp_phone_number_id}/messages", $payload);
+        } catch (\Throwable $e) {
+            \App\Models\WhatsAppLog::create([
+                'recipient_phone' => $formattedPhone,
+                'recipient_name' => $recipientName ?? 'Recipient',
+                'type' => $type,
+                'message' => $messageText,
+                'status' => 'Failed',
+                'error_details' => $e->getMessage(),
+            ]);
+
+            return ['success' => false, 'message_id' => null, 'error' => $e->getMessage()];
+        }
+
+        $data = $response->json() ?? [];
+        $isSuccess = $response->successful() && isset($data['messages'][0]['id']);
+        $msgId = $isSuccess ? $data['messages'][0]['id'] : null;
+
+        \App\Models\WhatsAppLog::create([
+            'recipient_phone' => $formattedPhone,
+            'recipient_name' => $recipientName ?? 'Recipient',
+            'type' => $type,
+            'message' => $messageText,
+            'status' => $isSuccess ? 'Delivered' : 'Failed',
+            'message_id' => $msgId,
+            'error_details' => $isSuccess ? null : ($data['error']['message'] ?? 'HTTP '.$response->status()),
+        ]);
+
+        return [
+            'success' => $isSuccess,
+            'message_id' => $msgId,
+            'error' => $isSuccess ? null : ($data['error']['message'] ?? 'Dispatch failed'),
+        ];
+    }
 }

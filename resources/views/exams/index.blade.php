@@ -13,9 +13,14 @@
         </p>
     </div>
     @if(Auth::user()->isStaff() || Auth::user()->isManagement())
-    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#marksEntryModal">
-        <i class="fa-solid fa-pen-to-square me-1"></i> Enter Exam Marks
-    </button>
+    <div class="d-flex gap-2">
+        <a href="{{ route('exams.collection.index') }}" class="btn btn-outline-primary shadow-sm">
+            <i class="fa-solid fa-hand-holding-hand me-1"></i> Result Collection Register
+        </a>
+        <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#marksEntryModal">
+            <i class="fa-solid fa-pen-to-square me-1"></i> Enter Exam Marks
+        </button>
+    </div>
     @endif
 </div>
 

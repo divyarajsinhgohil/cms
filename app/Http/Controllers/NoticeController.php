@@ -6,9 +6,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Notice;
 use App\Models\Course;
+use App\Services\AlertDispatchService;
 
 class NoticeController extends Controller
 {
+    public function __construct(private AlertDispatchService $alerts) {}
     public function index()
     {
         $user = Auth::user();
@@ -49,17 +51,33 @@ class NoticeController extends Controller
             'semester' => 'nullable|integer|min:1|max:8',
         ]);
 
-        Notice::create([
+        $notice = Notice::create([
             'title' => $request->title,
             'content' => $request->content,
             'target_audience' => $request->target_audience,
             'priority' => $request->priority,
             'posted_by' => Auth::id(),
-            // Stream/semester targeting only makes sense for a student audience
             'course_id' => $request->target_audience === 'students' ? $request->course_id : null,
             'semester' => $request->target_audience === 'students' ? $request->semester : null,
         ]);
 
-        return redirect()->back()->with('success', 'Notice posted to the board successfully!');
+        $queued = $this->alerts->notifyNoticePosted($notice);
+
+        // Dispatch website-wide Real-Time Broadcast
+        $targetRole = match ($notice->target_audience) {
+            'students' => 'student',
+            'staff' => 'staff',
+            default => 'all',
+        };
+        \App\Models\BroadcastMessage::dispatchSystemMessage(
+            "📢 Notice Board Update: {$notice->title}",
+            "A new notice has been published by ".Auth::user()->name.". Click to view details.",
+            $targetRole,
+            $notice->priority === 'urgent' ? 'danger' : 'info',
+            $notice->priority === 'urgent' ? 'modal' : 'toast',
+            route('notices.index')
+        );
+
+        return redirect()->back()->with('success', "Notice posted & broadcasted live! {$queued} notification(s) queued for delivery.");
     }
 }

@@ -20,11 +20,22 @@ use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\AdmissionApplicationController;
 use App\Http\Controllers\SectionController;
+use App\Http\Controllers\PublicController;
+use App\Http\Controllers\StudentImportController;
+use App\Http\Controllers\AlertController;
+use App\Http\Controllers\ResultCollectionController;
+use App\Http\Controllers\BroadcastController;
+use App\Http\Controllers\WhatsAppController;
 
-// Auth Routes
+// Public & Auth Routes
 Route::get('/', function () {
-    return redirect()->route('login');
+    return auth()->check()
+        ? redirect()->route('dashboard')
+        : redirect()->route('login');
 });
+
+Route::get('/home', [PublicController::class, 'home'])->name('public.home');
+Route::get('/locale/{locale}', [PublicController::class, 'setLocale'])->name('locale.switch');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
@@ -49,6 +60,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/academics/departments', [AcademicController::class, 'storeDepartment'])->name('academics.departments.store');
     Route::put('/academics/departments/{department}', [AcademicController::class, 'updateDepartment'])->name('academics.departments.update');
     Route::delete('/academics/departments/{department}', [AcademicController::class, 'destroyDepartment'])->name('academics.departments.destroy');
+    Route::post('/academics/departments/bulk-destroy', [AcademicController::class, 'destroyDepartmentsBulk'])->name('academics.departments.bulk_destroy');
 
     Route::get('/academics/courses', [AcademicController::class, 'coursesIndex'])->name('academics.courses');
     Route::post('/academics/courses', [AcademicController::class, 'storeCourse'])->name('academics.courses.store');
@@ -59,6 +71,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/academics/subjects', [AcademicController::class, 'storeSubject'])->name('academics.subjects.store');
     Route::put('/academics/subjects/{subject}', [AcademicController::class, 'updateSubject'])->name('academics.subjects.update');
     Route::delete('/academics/subjects/{subject}', [AcademicController::class, 'destroySubject'])->name('academics.subjects.destroy');
+
+    // Semester-Wise Syllabus & Faculty Portal
+    Route::get('/academics/my-syllabus', [AcademicController::class, 'mySyllabus'])->name('academics.my_syllabus');
+    Route::get('/academics/syllabi', [AcademicController::class, 'syllabiIndex'])->name('academics.syllabi');
+    Route::post('/academics/syllabi', [AcademicController::class, 'storeSyllabus'])->name('academics.syllabi.store');
 
     Route::get('/academics/staff', [StaffController::class, 'index'])->name('academics.staff');
     Route::post('/academics/staff', [StaffController::class, 'store'])->name('academics.staff.store');
@@ -77,7 +94,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/marketing/template', [MarketingController::class, 'storeTemplate'])->name('marketing.template');
     Route::post('/marketing/campaign', [MarketingController::class, 'launchCampaign'])->name('marketing.campaign');
 
-    // Student Directory & Admissions (contains other students' personal contact details — not for students)
+    // Student Directory & Admissions (management & teachers)
+    Route::middleware('role:management,staff')->group(function () {
+        Route::get('/admissions/export', [StudentImportController::class, 'export'])->name('admissions.export');
+        Route::get('/admissions/import', [StudentImportController::class, 'index'])->name('admissions.import');
+        Route::get('/admissions/import/template', [StudentImportController::class, 'template'])->name('admissions.import.template');
+        Route::post('/admissions/import/preview', [StudentImportController::class, 'preview'])->name('admissions.import.preview');
+        Route::post('/admissions/import/run', [StudentImportController::class, 'import'])->name('admissions.import.run');
+    });
     Route::middleware('role:management,staff')->group(function () {
         Route::get('/admissions', [AdmissionController::class, 'index'])->name('admissions.index');
         Route::get('/admissions/{student}', [AdmissionController::class, 'show'])->name('admissions.show');
@@ -125,6 +149,7 @@ Route::middleware(['auth'])->group(function () {
     // Attendance (management/staff only — students see their own attendance on their dashboard)
     Route::middleware('role:management,staff')->group(function () {
         Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+        Route::get('/attendance/pdf', [AttendanceController::class, 'downloadPdf'])->name('attendance.pdf');
         Route::post('/attendance', [AttendanceController::class, 'store'])->name('attendance.store');
     });
 
@@ -143,6 +168,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/exams/marksheet/{student}', [ExamController::class, 'viewMarksheet'])->name('exams.marksheet');
     Route::get('/exams/marksheet/{student}/pdf', [ExamController::class, 'downloadMarksheetPdf'])->name('exams.marksheet.pdf');
 
+    // Result Hard-Copy Collection Register
+    Route::middleware('role:management,staff')->group(function () {
+        Route::get('/exams/collection', [ResultCollectionController::class, 'index'])->name('exams.collection.index');
+        Route::post('/exams/collection/mark', [ResultCollectionController::class, 'markBulk'])->name('exams.collection.mark');
+        Route::post('/exams/collection/remind', [ResultCollectionController::class, 'remind'])->name('exams.collection.remind');
+    });
+
     // Timetables (viewing is open to everyone; creating/generating slots is management only,
     // matching the buttons which were already hidden from other roles in the UI)
     Route::get('/timetables', [TimetableController::class, 'index'])->name('timetables.index');
@@ -160,6 +192,31 @@ Route::middleware(['auth'])->group(function () {
     // Notices
     Route::get('/notices', [NoticeController::class, 'index'])->name('notices.index');
     Route::post('/notices', [NoticeController::class, 'store'])->name('notices.store');
+
+    // Queued alert notifications
+    Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
+    Route::post('/alerts/{alert}/read', [AlertController::class, 'markRead'])->name('alerts.read');
+    Route::post('/alerts/read-all', [AlertController::class, 'markAllRead'])->name('alerts.read_all');
+
+    // Real-Time Broadcast Messaging
+    Route::get('/api/realtime-messages/check', [BroadcastController::class, 'checkRealtime'])->name('broadcasts.check');
+    Route::post('/api/realtime-messages/{broadcast}/dismiss', [BroadcastController::class, 'dismiss'])->name('broadcasts.dismiss');
+
+    Route::middleware('role:management')->group(function () {
+        Route::get('/broadcasts', [BroadcastController::class, 'index'])->name('broadcasts.index');
+        Route::post('/broadcasts/send', [BroadcastController::class, 'store'])->name('broadcasts.send');
+        Route::post('/broadcasts/{broadcast}/toggle', [BroadcastController::class, 'toggle'])->name('broadcasts.toggle');
+        Route::delete('/broadcasts/{broadcast}', [BroadcastController::class, 'destroy'])->name('broadcasts.destroy');
+    });
+
+    // Dedicated WhatsApp Hub & Messaging Center
+    Route::middleware('role:management,staff')->group(function () {
+        Route::get('/whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');
+        Route::post('/whatsapp/send-direct', [WhatsAppController::class, 'sendDirect'])->name('whatsapp.send_direct');
+        Route::post('/whatsapp/triggers', [WhatsAppController::class, 'updateTriggers'])->name('whatsapp.triggers');
+        Route::get('/whatsapp/logs', [WhatsAppController::class, 'logs'])->name('whatsapp.logs');
+        Route::get('/whatsapp/test-connection', [WhatsAppController::class, 'testConnection'])->name('whatsapp.test_connection');
+    });
 
     // Website Settings (management only)
     Route::middleware('role:management')->group(function () {

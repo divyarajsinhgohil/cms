@@ -1,60 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admission Application - {{ $siteSettings->site_name ?? 'College Management System' }}</title>
+    <title>{{ __('public.apply_title') }} - {{ $siteSettings->site_name ?? 'College Management System' }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
+    <script>
+        (function () {
+            var savedTheme = localStorage.getItem('cms-theme') || 'light';
+            var savedAccent = localStorage.getItem('cms-accent') || 'purple';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+            document.documentElement.setAttribute('data-cms-accent', savedAccent);
+        })();
+    </script>
     <style>
-        :root {
-            --bs-primary: #6d3fa0;
-            --bs-primary-rgb: 109, 63, 160;
-        }
-        .btn-primary {
-            --bs-btn-bg: #6d3fa0;
-            --bs-btn-border-color: #6d3fa0;
-            --bs-btn-hover-bg: #5c3488;
-            --bs-btn-hover-border-color: #562f7e;
-            --bs-btn-active-bg: #562f7e;
-            --bs-btn-active-border-color: #502c75;
-        }
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: #f1f5f9;
+            background-color: #f8fafc;
             min-height: 100vh;
         }
-        .brand-strip {
-            height: 5px;
-            background: linear-gradient(90deg, #f5841f 0%, #e6007e 25%, #6d3fa0 50%, #2e5fa3 75%, #2ba84a 100%);
+        [data-bs-theme="dark"] body {
+            background-color: #0b0f19;
         }
         .apply-header {
-            background: linear-gradient(135deg, #4a1f6e 0%, #2e5fa3 100%);
+            background: var(--cms-gradient-brand);
             color: #fff;
-            padding: 2.5rem 1rem;
+            padding: 3rem 1rem 4.5rem;
             text-align: center;
+            position: relative;
         }
-        .form-wrap { max-width: 900px; margin: -3rem auto 3rem; padding: 0 1rem; }
-        .section-card { background: #fff; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); padding: 1.75rem; margin-bottom: 1.5rem; }
-        .section-title { font-weight: 700; color: #4a1f6e; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
-        .photo-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 0.75rem; border: 2px dashed #cbd5e1; }
+        .form-wrap { max-width: 900px; margin: -3rem auto 3rem; padding: 0 1rem; position: relative; z-index: 10; }
+        .section-card {
+            background: var(--cms-card-bg);
+            border-radius: var(--cms-radius-xl);
+            border: 1px solid var(--cms-border);
+            box-shadow: var(--cms-shadow-md);
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+            transition: transform var(--cms-transition-fast), box-shadow var(--cms-transition-fast);
+        }
+        .section-card:hover {
+            box-shadow: var(--cms-shadow-lg);
+        }
+        .section-title {
+            font-weight: 700;
+            color: var(--cms-primary);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .photo-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 0.75rem; border: 2px dashed var(--cms-border); }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/campus.css') }}?v={{ filemtime(public_path('css/campus.css')) }}">
 </head>
-<body>
-    <div class="brand-strip"></div>
+<body class="campus-apply">
+    <a href="#apply-form" class="cms-skip-link">{{ __('public.skip_to_content') }}</a>
+    <div class="brand-strip fixed-top"></div>
 
-    <div class="apply-header">
+    <div class="apply-header animate-fade-down">
         @if(!empty($siteSettings?->logo_url))
-            <img src="{{ $siteSettings->logo_url }}" alt="Logo" height="56" class="rounded mb-2">
+            <img src="{{ $siteSettings->logo_url }}" alt="{{ $siteSettings->site_name ?? 'College logo' }}" height="56" class="rounded mb-2">
         @else
-            <i class="fa-solid fa-graduation-cap text-warning display-4 mb-2"></i>
+            <i class="fa-solid fa-graduation-cap text-warning fs-1 mb-2" aria-hidden="true"></i>
         @endif
-        <h2 class="fw-bold mb-1">{{ $siteSettings->site_name ?? 'College Management System' }}</h2>
-        <p class="mb-0 opacity-75">{{ $siteSettings->affiliation ?? 'Online Admission Application Form' }}</p>
+        <h1 class="h2 fw-bold mb-1">{{ $siteSettings->site_name ?? 'College Management System' }}</h1>
+        <p class="mb-2 opacity-75">{{ __('public.apply_subtitle') }}</p>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+            @include('components.language-switcher')
+            <a href="{{ route('public.home') }}" class="btn btn-sm btn-outline-light">{{ __('public.nav_home') }}</a>
+        </div>
     </div>
 
-    <div class="form-wrap">
+    <div class="form-wrap" id="apply-form">
         @if(session('success'))
             <div class="alert alert-success shadow-sm border-0 rounded-4" role="alert">
                 <i class="fa-solid fa-circle-check me-2"></i> {{ session('success') }}
@@ -230,7 +250,7 @@
             </div>
 
             <div class="section-card text-center">
-                <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold">
+                <button type="submit" class="btn btn-gradient-primary btn-lg px-5 fw-bold shadow-md">
                     <i class="fa-solid fa-paper-plane me-2"></i> Submit Application
                 </button>
                 <div class="mt-3">

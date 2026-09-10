@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 animate-fade-down">
     <div>
-        <h3 class="fw-bold mb-1">Student Portal</h3>
+        <h1 class="campus-page-heading mb-1">Your student space</h1>
         <p class="text-muted mb-0">
             Welcome back, {{ Auth::user()->name }}!
             @if($student)
@@ -18,8 +18,14 @@
     @endif
 </div>
 
+<section class="campus-welcome" aria-label="Student welcome">
+    <div class="campus-eyebrow text-primary">A new day. A little more possibility.</div>
+    <h2>Make this semester yours.</h2>
+    <p>Stay connected to your classes, keep an eye on your progress, and find everything you need for the next step.</p>
+</section>
+
 @if(isset($todayOverride) && $todayOverride->isNotEmpty())
-<div class="card border-0 shadow-lg rounded-4 mb-4" style="border-left: 6px solid #f5841f !important;">
+<div class="card card-hover-lift mb-4 animate-fade-up" style="border-left: 6px solid #f5841f !important;">
     <div class="card-header bg-warning-subtle py-3 border-0 d-flex align-items-center gap-2">
         <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
         <h5 class="fw-bold mb-0 text-dark">Heads up — today's timetable is different!</h5>
@@ -45,8 +51,8 @@
 
 <!-- Student Stats Cards -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="stat-card">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card stat-card-primary animate-fade-up delay-50">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold text-uppercase">Cumulative CGPA</div>
@@ -56,12 +62,12 @@
                     <i class="fa-solid fa-award"></i>
                 </div>
             </div>
-            <div class="mt-2 text-success small"><i class="fa-solid fa-star me-1"></i> Academic Standing: Excellent</div>
+            <div class="mt-2 text-muted small"><i class="fa-solid fa-book-open me-1" aria-hidden="true"></i> Based on published results</div>
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="stat-card">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card {{ $attendancePct < 75 ? 'stat-card-danger' : 'stat-card-success' }} animate-fade-up delay-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold text-uppercase">Attendance %</div>
@@ -75,14 +81,14 @@
                 @if($attendancePct < 75)
                     <i class="fa-solid fa-triangle-exclamation me-1"></i> Below 75% Threshold!
                 @else
-                    <i class="fa-solid fa-circle-check me-1"></i> Good Standing (>75%)
+                    <i class="fa-solid fa-circle-check me-1 text-success"></i> Good Standing (>75%)
                 @endif
             </div>
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="stat-card">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card stat-card-success animate-fade-up delay-150">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold text-uppercase">Fee Paid</div>
@@ -96,8 +102,8 @@
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="stat-card">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card stat-card-danger animate-fade-up delay-200">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold text-uppercase">Pending Dues</div>
@@ -107,19 +113,25 @@
                     <i class="fa-solid fa-receipt"></i>
                 </div>
             </div>
-            <div class="mt-2 text-danger small">Next Installment Balance</div>
+            <div class="mt-2 text-danger small fw-semibold">Next Installment Balance</div>
         </div>
     </div>
 </div>
 
 <!-- Daily Attendance Trend -->
-<div class="card border-0 shadow-sm rounded-4 mb-4">
-    <div class="card-header bg-white py-3 border-0">
+@include('components.campus-shortcuts', ['label' => 'Student quick access', 'links' => [
+    ['route' => 'timetables.index', 'icon' => 'fa-calendar-days', 'title' => 'Your timetable', 'description' => 'Know what comes next'],
+    ['route' => 'materials.index', 'icon' => 'fa-book-open', 'title' => 'Learning materials', 'description' => 'Notes, resources & more'],
+    ['route' => 'notices.index', 'icon' => 'fa-bullhorn', 'title' => 'Campus notices', 'description' => 'Stay in the loop'],
+]])
+
+<div class="card card-hover-lift mb-4 animate-fade-up delay-250">
+    <div class="card-header py-3">
         <h5 class="fw-bold mb-0"><i class="fa-solid fa-chart-line text-primary me-2"></i> My Daily Attendance (Last 14 Days)</h5>
     </div>
     <div class="card-body">
         @if($student)
-            <canvas id="attendanceTrendChart" height="80"></canvas>
+            <div class="campus-chart"><canvas id="attendanceTrendChart" role="img" aria-label="Your daily attendance percentage over the last 14 days">Your attendance summary is {{ $attendancePct }}%. Open the attendance page for details.</canvas></div>
         @else
             <p class="text-muted text-center py-4 mb-0">No student profile linked — attendance trend unavailable.</p>
         @endif
@@ -129,11 +141,11 @@
 <div class="row g-4">
     <!-- Academic Results -->
     <div class="col-lg-7">
-        <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+        <div class="card card-hover-lift h-100 animate-fade-up delay-300">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
                 <h5 class="fw-bold mb-0"><i class="fa-solid fa-book-open text-primary me-2"></i> Semester Academic Marks</h5>
                 @if($student)
-                <a href="{{ route('exams.marksheet', $student->id) }}" class="btn btn-sm btn-link text-decoration-none">Full Marksheet PDF &rarr;</a>
+                <a href="{{ route('exams.marksheet', $student->id) }}" class="btn btn-sm btn-outline-primary text-decoration-none">Full Marksheet PDF &rarr;</a>
                 @endif
             </div>
             <div class="table-responsive">
@@ -169,8 +181,8 @@
 
     <!-- Student Notices -->
     <div class="col-lg-5">
-        <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-header bg-white py-3 border-0">
+        <div class="card card-hover-lift h-100 animate-fade-up delay-350">
+            <div class="card-header py-3">
                 <h5 class="fw-bold mb-0"><i class="fa-solid fa-bullhorn text-warning me-2"></i> Student Announcements</h5>
             </div>
             <div class="card-body">
@@ -198,7 +210,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
     const attendanceTrend = @json($attendanceTrend);
-    new Chart(document.getElementById('attendanceTrendChart'), {
+    const attendanceChart = new Chart(document.getElementById('attendanceTrendChart'), {
         type: 'line',
         data: {
             labels: attendanceTrend.map(d => d.label),
@@ -206,15 +218,17 @@
                 label: 'Attendance %',
                 data: attendanceTrend.map(d => d.pct),
                 spanGaps: false,
-                borderColor: '#4f46e5',
-                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                borderColor: '#6d9e80',
+                backgroundColor: 'rgba(109, 158, 128, 0.12)',
                 tension: 0.3,
                 fill: true,
                 pointRadius: 4,
-                pointBackgroundColor: attendanceTrend.map(d => (d.pct !== null && d.pct < 75) ? '#dc3545' : '#4f46e5'),
+                pointBackgroundColor: attendanceTrend.map(d => (d.pct !== null && d.pct < 75) ? '#c56b62' : '#6d9e80'),
             }]
         },
         options: {
+            maintainAspectRatio: false,
+            animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? false : { duration: 400 },
             scales: {
                 y: { min: 0, max: 100, ticks: { callback: (v) => v + '%' } }
             },
@@ -228,6 +242,26 @@
             }
         }
     });
+    function updateAttendanceChartTheme() {
+        const styles = getComputedStyle(document.documentElement);
+        const text = styles.getPropertyValue('--cms-text-muted').trim();
+        const border = styles.getPropertyValue('--cms-border').trim();
+        const accent = styles.getPropertyValue('--cms-primary').trim();
+        attendanceChart.data.datasets[0].borderColor = accent;
+        attendanceChart.data.datasets[0].backgroundColor = accent + '18';
+        attendanceChart.data.datasets[0].pointBackgroundColor = attendanceTrend.map(d => (d.pct !== null && d.pct < 75) ? '#c56b62' : accent);
+        ['x', 'y'].forEach(function (axis) {
+            attendanceChart.options.scales[axis] = {
+                ...attendanceChart.options.scales[axis],
+                ticks: { ...attendanceChart.options.scales[axis]?.ticks, color: text },
+                grid: { color: border },
+                border: { display: false },
+            };
+        });
+        attendanceChart.update('none');
+    }
+    updateAttendanceChartTheme();
+    new MutationObserver(updateAttendanceChartTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
 </script>
 @endsection
 @endif

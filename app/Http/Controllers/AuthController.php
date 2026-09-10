@@ -30,6 +30,14 @@ class AuthController extends Controller
         $loginInput = $request->input('login');
         $password = $request->input('password');
 
+        $demoAliases = [
+            'faculty@cms.edu' => 'rajesh.varma@cms.edu',
+            'student@cms.edu' => 'pooja.joshi@cms.edu',
+        ];
+        if (isset($demoAliases[strtolower(trim($loginInput))])) {
+            $loginInput = $demoAliases[strtolower(trim($loginInput))];
+        }
+
         // Check if user exists by Email, Phone Number, OR Name. A phone number (or name)
         // can be shared by more than one account (e.g. siblings using a parent's number,
         // or two staff members with the same name), so every matching account whose
@@ -120,6 +128,30 @@ class AuthController extends Controller
         $user->save();
 
         return redirect()->route('dashboard')->with('success', 'Your password has been updated successfully! Welcome to your dashboard.');
+    }
+
+    public function quickLogin(Request $request, string $role)
+    {
+        $roleMap = [
+            'management' => 'management',
+            'admin' => 'management',
+            'staff' => 'staff',
+            'faculty' => 'staff',
+            'teacher' => 'staff',
+            'student' => 'student',
+        ];
+
+        $targetRole = $roleMap[strtolower($role)] ?? null;
+        if (! $targetRole) {
+            return redirect()->route('login')->with('error', "Invalid role requested for quick login: {$role}");
+        }
+
+        $user = User::where('role', $targetRole)->first();
+        if (! $user) {
+            return redirect()->route('login')->with('error', "No user account found for {$targetRole} role.");
+        }
+
+        return $this->completeLogin($request, $user);
     }
 
     public function logout(Request $request)

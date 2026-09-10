@@ -57,7 +57,7 @@ class MaterialController extends Controller
             $filePath = $request->file('file')->store('study_materials', 'public');
         }
 
-        StudyMaterial::create([
+        $material = StudyMaterial::create([
             'subject_id' => $request->subject_id,
             'uploaded_by' => Auth::id(),
             'title' => $request->title,
@@ -67,7 +67,22 @@ class MaterialController extends Controller
             'due_date' => $request->due_date,
         ]);
 
-        return redirect()->back()->with('success', 'Study material / assignment published successfully!');
+        // Real-Time Broadcast to Students
+        $subject = Subject::find($request->subject_id);
+        $subjectName = optional($subject)->name ?? 'Subject';
+        $typeLabel = ucfirst($request->type);
+        $hasFile = filled($filePath) ? ' (PDF/File Attached)' : '';
+
+        \App\Models\BroadcastMessage::dispatchSystemMessage(
+            "📚 New Learning Material: {$request->title}",
+            "New {$typeLabel} uploaded for {$subjectName}{$hasFile} by ".Auth::user()->name.". Click to view.",
+            'student',
+            'info',
+            'toast',
+            route('materials.index')
+        );
+
+        return redirect()->back()->with('success', 'Study material / assignment published & broadcasted to students live!');
     }
 
     public function submitAssignment(Request $request, StudyMaterial $material)

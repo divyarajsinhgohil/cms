@@ -11,6 +11,14 @@
     </button>
 </div>
 
+<!-- Bulk Delete Bar (shown once at least one department is selected) -->
+<div id="deptBulkBar" class="alert alert-danger d-none d-flex justify-content-between align-items-center rounded-4 shadow-sm">
+    <span class="fw-bold"><span id="deptBulkCount">0</span> department(s) selected</span>
+    <button type="button" class="btn btn-danger btn-sm fw-bold" onclick="cmsOpenDeptBulkDeleteModal()">
+        <i class="fa-solid fa-trash me-1"></i> Delete Selected
+    </button>
+</div>
+
 <!-- Summary Stat Cards -->
 <div class="row g-3 mb-4">
     <div class="col-md-6 col-xl-3">
@@ -91,6 +99,7 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th style="width: 40px;"><input type="checkbox" class="form-check-input" id="deptSelectAll" onchange="cmsToggleAllDepts(this)"></th>
                         <th>Dept Code</th>
                         <th>Department Name</th>
                         <th>Head of Department (HOD)</th>
@@ -102,6 +111,12 @@
                 <tbody>
                     @forelse($departments as $dept)
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input dept-checkbox" value="{{ $dept->id }}"
+                                data-name="{{ $dept->name }}" data-courses="{{ $dept->courses_count }}"
+                                data-staff="{{ $dept->staff_count }}" data-students="{{ $dept->students_count }}"
+                                onchange="cmsUpdateDeptBulkBar()">
+                        </td>
                         <td><span class="badge bg-dark font-monospace fs-7">{{ $dept->code }}</span></td>
                         <td class="fw-bold text-dark">{{ $dept->name }}</td>
                         <td>{{ $dept->head_of_department ?? 'Not Assigned' }}</td>
@@ -120,13 +135,9 @@
                                 <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editDeptModal{{ $dept->id }}">
                                     <i class="fa-solid fa-pen-to-square me-1"></i> Edit
                                 </button>
-                                <form action="{{ route('academics.departments.destroy', $dept->id) }}" method="POST" data-confirm="Delete department {{ $dept->name }}?">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="fa-solid fa-trash me-1"></i> Delete
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteDeptModal{{ $dept->id }}">
+                                    <i class="fa-solid fa-trash me-1"></i> Delete
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -164,9 +175,42 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Modal: Delete Department (type-to-confirm) -->
+                    <div class="modal fade" id="deleteDeptModal{{ $dept->id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form action="{{ route('academics.departments.destroy', $dept->id) }}" method="POST">
+                                    @csrf
+                                    @method('DELETE')
+                                    <div class="modal-header bg-danger-subtle">
+                                        <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i> Permanently Delete Department</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="alert alert-danger fs-7">
+                                            This will permanently delete <strong>{{ $dept->name }}</strong> along with its
+                                            <strong>{{ $dept->courses_count }}</strong> course(s),
+                                            <strong>{{ $dept->staff_count }}</strong> faculty member(s), and
+                                            <strong>{{ $dept->students_count }}</strong> student(s) enrolled under it &mdash;
+                                            including their attendance, fee, and exam records. This cannot be undone.
+                                        </div>
+                                        <label class="form-label fw-bold">Type <span class="font-monospace">{{ $dept->name }}</span> to confirm:</label>
+                                        <input type="text" name="confirm_name" class="form-control" autocomplete="off" oninput="this.closest('form').querySelector('.dept-confirm-submit').disabled = (this.value !== @js($dept->name))">
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-danger fw-bold dept-confirm-submit" disabled>
+                                            <i class="fa-solid fa-trash me-1"></i> Delete Permanently
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-5">
+                        <td colspan="7" class="text-center text-muted py-5">
                             <i class="fa-solid fa-building-circle-xmark display-5 mb-2 text-secondary"></i>
                             <p class="mb-0 fw-semibold">No departments found matching your search.</p>
                         </td>
@@ -210,4 +254,73 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Bulk Delete Departments (type-to-confirm) -->
+<div class="modal fade" id="deptBulkDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="deptBulkDeleteForm" action="{{ route('academics.departments.bulk_destroy') }}" method="POST">
+                @csrf
+                <div id="deptBulkHiddenInputs"></div>
+                <div class="modal-header bg-danger-subtle">
+                    <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i> Permanently Delete Selected Departments</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger fs-7">
+                        This will permanently delete <strong id="deptBulkNames"></strong> along with all their courses,
+                        faculty, and students &mdash; including those students' attendance, fee, and exam records. This cannot be undone.
+                    </div>
+                    <label class="form-label fw-bold">Type <span class="font-monospace">DELETE</span> to confirm:</label>
+                    <input type="text" id="deptBulkConfirmInput" name="confirm_word" class="form-control" autocomplete="off" oninput="document.getElementById('deptBulkSubmitBtn').disabled = (this.value.toUpperCase() !== 'DELETE')">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="deptBulkSubmitBtn" class="btn btn-danger fw-bold" disabled>
+                        <i class="fa-solid fa-trash me-1"></i> Delete Selected Permanently
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function cmsToggleAllDepts(source) {
+        document.querySelectorAll('.dept-checkbox').forEach(cb => cb.checked = source.checked);
+        cmsUpdateDeptBulkBar();
+    }
+
+    function cmsUpdateDeptBulkBar() {
+        const checked = document.querySelectorAll('.dept-checkbox:checked');
+        document.getElementById('deptBulkBar').classList.toggle('d-none', checked.length === 0);
+        document.getElementById('deptBulkCount').textContent = checked.length;
+
+        const all = document.querySelectorAll('.dept-checkbox');
+        document.getElementById('deptSelectAll').checked = all.length > 0 && checked.length === all.length;
+    }
+
+    function cmsOpenDeptBulkDeleteModal() {
+        const checked = Array.from(document.querySelectorAll('.dept-checkbox:checked'));
+        if (checked.length === 0) return;
+
+        const hiddenContainer = document.getElementById('deptBulkHiddenInputs');
+        hiddenContainer.innerHTML = '';
+        checked.forEach(cb => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'department_ids[]';
+            input.value = cb.value;
+            hiddenContainer.appendChild(input);
+        });
+
+        document.getElementById('deptBulkNames').textContent = checked.map(cb => cb.dataset.name).join(', ');
+
+        const confirmInput = document.getElementById('deptBulkConfirmInput');
+        confirmInput.value = '';
+        document.getElementById('deptBulkSubmitBtn').disabled = true;
+
+        new bootstrap.Modal(document.getElementById('deptBulkDeleteModal')).show();
+    }
+</script>
 @endsection

@@ -10,7 +10,7 @@ use App\Models\Course;
 use App\Models\Subject;
 use App\Models\Student;
 use App\Models\StaffProfile;
-use App\Models\Enquiry;
+use App\Models\AdmissionApplication;
 use App\Models\MarketingTemplate;
 use App\Models\MarketingCampaign;
 use App\Models\MarketingLog;
@@ -262,37 +262,38 @@ class DatabaseSeeder extends Seeder
             'credits' => 3,
         ]);
 
-        // 7. Admission Enquiries
-        Enquiry::create([
-            'name' => 'David Miller',
+        // 7. Admission Applications
+        AdmissionApplication::create([
+            'first_name' => 'David',
+            'last_name' => 'Miller',
+            'surname' => 'Miller',
             'email' => 'david@gmail.com',
-            'phone' => '+91 98111 22233',
+            'mobile' => '+91 98111 22233',
             'course_id' => $mcaCourse->id,
-            'source' => 'Website',
-            'status' => 'New',
-            'notes' => 'Interested in MCA 2026 session. Requested fee structure details.',
-            'follow_up_date' => now()->addDays(2)->format('Y-m-d'),
+            'gender' => 'Male',
+            'status' => 'Pending',
         ]);
 
-        Enquiry::create([
-            'name' => 'Priya Nair',
+        AdmissionApplication::create([
+            'first_name' => 'Priya',
+            'last_name' => 'Nair',
+            'surname' => 'Nair',
             'email' => 'priya@nair.com',
-            'phone' => '+91 98222 33344',
+            'mobile' => '+91 98222 33344',
             'course_id' => $cseCourse->id,
-            'source' => 'Walk-in',
-            'status' => 'In Progress',
-            'notes' => 'Visited campus on Monday. Counseling done. Awaiting documents.',
-            'follow_up_date' => now()->addDays(1)->format('Y-m-d'),
+            'gender' => 'Female',
+            'status' => 'Pending',
         ]);
 
-        Enquiry::create([
-            'name' => 'Kevin Peterson',
+        AdmissionApplication::create([
+            'first_name' => 'Kevin',
+            'last_name' => 'Peterson',
+            'surname' => 'Peterson',
             'email' => 'kevin@yahoo.com',
-            'phone' => '+91 98333 44455',
+            'mobile' => '+91 98333 44455',
             'course_id' => $mcaCourse->id,
-            'source' => 'WhatsApp Marketing',
-            'status' => 'Converted',
-            'notes' => 'Admission confirmed. Fee paid via online portal.',
+            'gender' => 'Male',
+            'status' => 'Approved',
         ]);
 
         // 8. Marketing Templates & Campaigns

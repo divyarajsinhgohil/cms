@@ -80,18 +80,35 @@ class CertificateController extends Controller
         return $pdf->download("ID-Card-{$student->enrollment_no}.pdf");
     }
 
-    public function bonafide(Student $student)
+    public function bonafide(Request $request, Student $student)
     {
         $this->authorizeStudentSelf($student);
         $student->load(['user', 'department', 'course']);
-        return view('certificates.bonafide', compact('student'));
+        $reason = $request->get('reason', 'General Documentation & Benefit Claim');
+        $siteSettings = \App\Models\SiteSetting::current();
+
+        return view('certificates.bonafide', compact('student', 'reason', 'siteSettings'));
     }
 
-    public function bonafidePdf(Student $student)
+    public function bonafidePdf(Request $request, Student $student)
     {
         $this->authorizeStudentSelf($student);
         $student->load(['user', 'department', 'course']);
-        $pdf = Pdf::loadView('certificates.bonafide_pdf', compact('student'));
+        $reason = $request->get('reason', 'General Documentation & Benefit Claim');
+        $siteSettings = \App\Models\SiteSetting::current();
+
+        // Prepare student photo image for Dompdf
+        $photoBase64 = null;
+        if (optional($student->user)->avatar) {
+            $avatarPath = public_path($student->user->avatar);
+            if (file_exists($avatarPath)) {
+                $type = pathinfo($avatarPath, PATHINFO_EXTENSION);
+                $data = file_get_contents($avatarPath);
+                $photoBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+            }
+        }
+
+        $pdf = Pdf::loadView('certificates.bonafide_pdf', compact('student', 'reason', 'siteSettings', 'photoBase64'));
 
         return $pdf->download("Bonafide-Certificate-{$student->enrollment_no}.pdf");
     }

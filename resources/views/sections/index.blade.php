@@ -108,9 +108,15 @@
                             <td>{{ $section->students_count }}</td>
                             <td style="min-width: 160px;">
                                 @php $pct = $section->capacity > 0 ? min(100, round(($section->students_count / $section->capacity) * 100)) : 0; @endphp
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar {{ $section->students_count > $section->capacity ? 'bg-danger' : 'bg-success' }}" style="width: {{ $pct }}%"></div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar {{ $section->students_count > $section->capacity ? 'bg-danger' : 'bg-success' }}" style="width: {{ $pct }}%"></div>
+                                    </div>
+                                    <span class="small fw-semibold {{ $section->students_count > $section->capacity ? 'text-danger' : 'text-muted' }}" style="min-width: 36px; text-align: right;">{{ $pct }}%</span>
                                 </div>
+                                @if($section->students_count > $section->capacity)
+                                    <span class="badge bg-danger-subtle text-danger fs-7 mt-1">Over capacity</span>
+                                @endif
                             </td>
                             <td onclick="event.stopPropagation()">
                                 <div class="d-flex gap-1">

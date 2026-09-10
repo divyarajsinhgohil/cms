@@ -1,67 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Bonafide Certificate - {{ optional($student->user)->name }}</title>
     <style>
-        body { font-family: 'Times New Roman', 'Georgia', serif; color: #1e293b; font-size: 14px; }
-        .cert-container { border: 8px solid #1e3c72; padding: 40px; }
-        .header { text-align: center; border-bottom: 1px solid #1e3c72; padding-bottom: 16px; margin-bottom: 16px; }
-        .header h2 { color: #1e3c72; text-transform: uppercase; margin: 0 0 6px 0; }
-        .muted { color: #64748b; font-size: 11px; font-family: Helvetica, Arial, sans-serif; }
-        .title { text-align: center; text-transform: uppercase; letter-spacing: 2px; border-top: 1px solid #1e293b; border-bottom: 1px solid #1e293b; padding: 8px 0; margin: 24px 0; }
-        .body-text { line-height: 2; margin: 20px 0; text-align: justify; }
-        .footer-table { width: 100%; margin-top: 60px; }
-        .footer-table td { vertical-align: bottom; font-family: Helvetica, Arial, sans-serif; font-size: 11px; }
-        .sig { border-top: 1px solid #1e293b; padding-top: 6px; font-weight: bold; text-align: center; }
-        .photo-box { text-align: center; }
-        .photo-box img { width: 90px; height: 90px; object-fit: cover; border: 1px solid #1e3c72; }
+        @page { margin: 25px; }
+        body { font-family: 'DejaVu Sans', sans-serif; color: #1e293b; font-size: 13px; line-height: 1.6; }
+        .cert-border { border: 3px double #6d3fa0; padding: 30px; border-radius: 8px; }
+        .header-table { width: 100%; border-bottom: 2px solid #6d3fa0; padding-bottom: 15px; margin-bottom: 20px; }
+        .header-logo { color: #6d3fa0; font-size: 22px; font-weight: bold; }
+        .title-box { text-align: center; margin: 15px 0; }
+        .title-text { font-size: 16px; font-weight: bold; text-transform: uppercase; border-top: 1px solid #1e293b; border-bottom: 1px solid #1e293b; padding: 6px 15px; display: inline-block; }
+        .student-photo { width: 100px; height: 120px; border: 2px solid #6d3fa0; border-radius: 6px; }
+        .reason-box { background-color: #f1f5f9; border-left: 4px solid #6d3fa0; padding: 10px 15px; margin: 15px 0; border-radius: 4px; }
+        .footer-table { width: 100%; margin-top: 40px; border-top: 1px solid #cbd5e1; padding-top: 15px; }
+        .text-muted { color: #64748b; font-size: 11px; }
+        .text-primary { color: #6d3fa0; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="cert-container">
-        <table style="width: 100%;">
+    <div class="cert-border">
+        <!-- Header Row -->
+        <table class="header-table">
             <tr>
-                <td style="width: 90px;" class="photo-box">
-                    <img src="{{ optional($student->user)->avatar ?? 'https://ui-avatars.com/api/?name='.urlencode(optional($student->user)->name) }}">
+                <td style="width: 70%;">
+                    <div class="header-logo">{{ $siteSettings->site_name ?? 'CMS College of Technology' }}</div>
+                    <div class="text-muted">{{ $siteSettings->affiliation ?? 'Affiliated to State University' }}</div>
+                    <div class="text-muted">{{ $siteSettings->address ?? 'Campus Road, Institutional Area' }}</div>
+                    <div class="text-muted">Email: {{ $siteSettings->contact_email ?? 'info@cms.edu' }} | Phone: {{ $siteSettings->contact_phone ?? '+91 98765 43210' }}</div>
                 </td>
-                <td class="header" style="border-bottom: none; padding-left: 16px;">
-                    <h2>{{ $siteSettings->site_name ?? 'CMS College Management System' }}</h2>
-                    <div class="muted">{{ $siteSettings->affiliation ?? 'Affiliated to State University' }}</div>
-                    <div class="muted">{{ $siteSettings->address ?? 'Campus Road, Institutional Area, Pin: 380001' }}</div>
+                <td style="width: 30%; text-align: right; vertical-align: top;">
+                    <div style="background: #6d3fa0; color: #ffffff; padding: 4px 8px; font-size: 11px; font-weight: bold; display: inline-block; border-radius: 4px;">OFFICIAL BONAFIDE</div>
+                    <div style="font-family: monospace; color: #6d3fa0; font-weight: bold; margin-top: 5px;">CMS/BON/2026/{{ sprintf('%04d', $student->id) }}</div>
+                    <div class="text-muted">Date: {{ date('F d, Y') }}</div>
                 </td>
             </tr>
         </table>
-        <div style="border-bottom: 1px solid #1e3c72; margin-bottom: 16px;"></div>
 
-        <h3 class="title">Bonafide Certificate</h3>
+        <!-- Title & Student Photo Row -->
+        <table style="width: 100%; margin-bottom: 15px;">
+            <tr>
+                <td style="vertical-align: middle;">
+                    <div class="title-text">BONAFIDE & BENEFIT CLAIM CERTIFICATE</div>
+                    <div class="text-muted" style="margin-top: 5px;">Academic Year: {{ $siteSettings->academic_year ?? date('Y').'-'.(date('Y')+1) }}</div>
+                </td>
+                <td style="text-align: right; vertical-align: top;">
+                    @if($photoBase64)
+                        <img src="{{ $photoBase64 }}" class="student-photo" alt="Student Photo">
+                    @else
+                        <div style="width: 90px; height: 110px; border: 2px dashed #94a3b8; border-radius: 6px; text-align: center; line-height: 110px; color: #94a3b8; font-size: 10px;">[Photo]</div>
+                    @endif
+                </td>
+            </tr>
+        </table>
 
-        <div class="body-text">
+        <!-- Certificate Main Body -->
+        <div style="font-size: 14px; line-height: 2; margin: 20px 0;">
             <p>
-                This is to certify that <strong>{{ optional($student->user)->name }}</strong>,
-                holding Enrollment Number <strong>{{ $student->enrollment_no }}</strong>,
-                is a bonafide student of this institution pursuing the
-                <strong>{{ optional($student->course)->name }} ({{ optional($student->course)->code }})</strong> program
-                in the <strong>{{ optional($student->department)->name }}</strong>.
+                This is to certify that <strong>{{ optional($student->user)->name }}</strong>, 
+                holding Enrollment Number <span class="text-primary">{{ $student->enrollment_no }}</span>, 
+                is a bonafide student of this institution pursuing the 
+                <strong>{{ optional($student->course)->name }} ({{ optional($student->course)->code }})</strong> program 
+                in the Department of <strong>{{ optional($student->department)->name }}</strong>.
             </p>
             <p>
-                He / She is currently studying in <strong>Semester {{ $student->current_semester }}</strong>
-                for the Academic Batch Year <strong>{{ $student->batch_year }}</strong>.
-                His / Her conduct and character during the period of study have been found to be <strong>Exemplary</strong>.
+                He / She is currently studying in <strong>Semester {{ $student->current_semester }}</strong> 
+                for the Academic Batch Year <strong>{{ $student->batch_year }}</strong>. 
+                His / Her conduct, academic standing, and character during the period of study have been found to be <strong>Exemplary</strong>.
             </p>
         </div>
 
+        <!-- Purpose / Benefit Claim Reason -->
+        <div class="reason-box">
+            <div style="font-weight: bold; color: #6d3fa0; font-size: 11px; text-transform: uppercase;">Purpose / Benefit Claim Reason:</div>
+            <div style="font-size: 14px; font-weight: bold; margin-top: 3px;">{{ $reason }}</div>
+            <div class="text-muted" style="margin-top: 2px;">This certificate is issued upon student's request for official submission towards the purpose stated above.</div>
+        </div>
+
+        <!-- Footer Signatures -->
         <table class="footer-table">
             <tr>
-                <td width="50%">
-                    <strong>Date of Issue:</strong> {{ date('F d, Y') }}<br>
-                    <span class="muted">Certificate Ref: CMS/BON/2026/{{ sprintf('%04d', $student->id) }}</span>
+                <td style="vertical-align: top;">
+                    <div style="font-weight: bold;">Date of Issue: {{ date('F d, Y') }}</div>
+                    <div class="text-muted">Ref: CMS/BON/2026/{{ sprintf('%04d', $student->id) }}</div>
+                    <div class="text-muted" style="font-size: 9px; margin-top: 4px;">Hash: {{ md5($student->enrollment_no . $reason . date('Y-m-d')) }}</div>
                 </td>
-                <td width="50%">
-                    <div class="sig">Dr. Robert Vance</div>
-                    <div style="text-align:center;">Principal / Executive Director</div>
-                    <div class="muted" style="text-align:center;">{{ $siteSettings->site_name ?? 'CMS College Management' }}</div>
+                <td style="text-align: right; vertical-align: top;">
+                    <div style="border-bottom: 1px solid #1e293b; padding-bottom: 4px; font-weight: bold; display: inline-block;">Dr. Robert Vance</div>
+                    <div style="font-weight: bold; margin-top: 4px;">Principal / Executive Director</div>
+                    <div class="text-muted">{{ $siteSettings->site_name ?? 'CMS College Management' }}</div>
                 </td>
             </tr>
         </table>

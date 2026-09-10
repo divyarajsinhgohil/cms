@@ -6,11 +6,21 @@
         <h3 class="fw-bold mb-1">Student Master Directory</h3>
         <p class="text-muted mb-0">Filter student records stream-wise, semester-wise, batch-wise, or by department.</p>
     </div>
-    @if(Auth::user()->isManagement())
-    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#newAdmissionModal">
-        <i class="fa-solid fa-user-plus me-1"></i> New Student Admission
-    </button>
-    @endif
+    <div class="d-flex gap-2">
+        <a href="{{ route('admissions.export', request()->all()) }}" class="btn btn-outline-success shadow-sm" title="Export filtered students as Excel/CSV">
+            <i class="fa-solid fa-file-excel me-1" aria-hidden="true"></i> Export CSV
+        </a>
+        @if(Auth::user()->isManagement() || Auth::user()->isStaff())
+        <a href="{{ route('admissions.import') }}" class="btn btn-outline-primary shadow-sm">
+            <i class="fa-solid fa-file-import me-1" aria-hidden="true"></i> Bulk Import
+        </a>
+        @endif
+        @if(Auth::user()->isManagement())
+        <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#newAdmissionModal">
+            <i class="fa-solid fa-user-plus me-1"></i> New Student Admission
+        </button>
+        @endif
+    </div>
 </div>
 
 <!-- Interactive Stream & Semester Filter Bar -->
@@ -175,7 +185,7 @@
                         </td>
                         <td>
                             <div class="d-flex gap-1 flex-wrap">
-                                <a href="{{ route('certificates.id_card', $student->id) }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Print Student ID Card">
+                                <a href="{{ route('certificates.id_card', $student->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Print Student ID Card">
                                     <i class="fa-solid fa-id-card"></i>
                                 </a>
                                 <a href="{{ route('certificates.bonafide', $student->id) }}" target="_blank" class="btn btn-sm btn-outline-info" title="Print Bonafide Certificate">

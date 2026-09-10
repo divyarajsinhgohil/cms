@@ -10,9 +10,11 @@ use App\Models\Course;
 use App\Models\Section;
 use App\Support\UniqueCode;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\AlertDispatchService;
 
 class FeeController extends Controller
 {
+    public function __construct(private AlertDispatchService $alerts) {}
     public function index(Request $request)
     {
         // Fees & Dues is a management-only module (see role:management on the route group)
@@ -110,7 +112,32 @@ class FeeController extends Controller
             ]);
         });
 
-        return redirect()->route('fees.receipt', $payment->id)->with('success', "Payment recorded! Receipt Generated: {$payment->receipt_no}");
+        $payment->load('student.user');
+        if ($payment->student) {
+            $this->alerts->notifyFeePayment($payment->student, (float) $payment->amount_paid, $payment->receipt_no);
+
+            // Automated WhatsApp Fee Receipt
+            $settings = \App\Models\SiteSetting::current();
+            if ($settings->whatsapp_auto_fee_receipt && optional($payment->student->user)->phone) {
+                app(\App\Services\WhatsAppService::class)->sendDirectMessage(
+                    $payment->student->user->phone,
+                    "Dear {$payment->student->user->name}, fee payment of ₹".number_format($payment->amount_paid, 2)." received successfully! Receipt No: {$payment->receipt_no}. Thank you!",
+                    $payment->student->user->name,
+                    'fee_receipt'
+                );
+            }
+            // Real-Time Broadcast to Student
+            \App\Models\BroadcastMessage::dispatchSystemMessage(
+                "💳 Fee Payment Receipt Issued: {$payment->receipt_no}",
+                "Payment of ₹".number_format($payment->amount_paid, 2)." recorded successfully. Click to view fee receipt.",
+                'student',
+                'success',
+                'toast',
+                route('fees.receipt', $payment->id)
+            );
+        }
+
+        return redirect()->route('fees.receipt', $payment->id)->with('success', "Payment recorded & broadcasted live! Receipt Generated: {$payment->receipt_no}");
     }
 
     public function viewReceipt(FeePayment $payment)

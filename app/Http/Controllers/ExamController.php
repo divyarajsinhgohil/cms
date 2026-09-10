@@ -9,9 +9,11 @@ use App\Models\Subject;
 use App\Models\Course;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\AlertDispatchService;
 
 class ExamController extends Controller
 {
+    public function __construct(private AlertDispatchService $alerts) {}
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -111,7 +113,36 @@ class ExamController extends Controller
             ]
         );
 
-        return redirect()->back()->with('success', "Marks saved & CGPA updated! Total: {$total}/100, Grade: {$grade}");
+        $student = Student::with('user')->find($request->student_id);
+        $subject = Subject::find($request->subject_id);
+        if ($student) {
+            $this->alerts->notifyExamResult($student, optional($subject)->name ?? 'Subject', (int) $total, $grade);
+
+            // Automated WhatsApp Exam Result Alert
+            $settings = \App\Models\SiteSetting::current();
+            if ($settings->whatsapp_auto_exam_result && optional($student->user)->phone) {
+                $subjectName = optional($subject)->name ?? 'Subject';
+                app(\App\Services\WhatsAppService::class)->sendDirectMessage(
+                    $student->user->phone,
+                    "Exam Result Update: {$student->user->name} scored {$total}/100 (Grade: {$grade}) in {$subjectName} for Semester {$request->semester}.",
+                    $student->user->name,
+                    'exam_result'
+                );
+            }
+        }
+
+        // Real-Time Broadcast to Students
+        $subjectName = optional($subject)->name ?? 'Subject';
+        \App\Models\BroadcastMessage::dispatchSystemMessage(
+            "🎓 Exam Result Published: {$subjectName}",
+            "Exam marks for {$subjectName} (Semester {$request->semester}) have been published.",
+            'student',
+            'success',
+            'toast',
+            route('exams.index')
+        );
+
+        return redirect()->back()->with('success', "Marks saved & broadcasted live! Total: {$total}/100, Grade: {$grade}");
     }
 
     public function viewMarksheet(Student $student)

@@ -7,63 +7,63 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
     <style>
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: linear-gradient(135deg, #2a1240 0%, #2e5fa3 100%);
+            background: linear-gradient(135deg, #1e1130 0%, #0f172a 50%, #1e293b 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        .brand-strip {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, #f5841f 0%, #e6007e 25%, #6d3fa0 50%, #2e5fa3 75%, #2ba84a 100%);
+            position: relative;
         }
         .login-card {
             background: #ffffff;
-            border-radius: 1.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            border-radius: var(--cms-radius-2xl);
+            box-shadow: var(--cms-shadow-2xl);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             overflow: hidden;
             width: 100%;
             max-width: 520px;
+            position: relative;
+            z-index: 10;
         }
         .login-header {
-            background: linear-gradient(135deg, #4a1f6e 0%, #2e5fa3 100%);
+            background: var(--cms-gradient-brand);
             padding: 2rem;
             color: #ffffff;
             text-align: center;
         }
         .account-btn {
-            border: 1px solid #e2e8f0;
-            border-radius: 1rem;
+            border: 1px solid var(--cms-border);
+            border-radius: var(--cms-radius-lg);
             padding: 1rem;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.85rem;
             width: 100%;
             background: #f8fafc;
             text-align: left;
-            transition: all 0.15s ease;
+            transition: all var(--cms-transition-fast);
         }
         .account-btn:hover {
-            border-color: #6d3fa0;
-            background: #ede4f7;
-            transform: translateY(-1px);
+            border-color: var(--cms-primary);
+            background: var(--cms-primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--cms-shadow-md);
         }
         .badge-role-management { background: #f43f5e; color: #fff; }
-        .badge-role-staff { background: #2e5fa3; color: #fff; }
-        .badge-role-student { background: #2ba84a; color: #fff; }
+        .badge-role-staff { background: var(--cms-secondary); color: #fff; }
+        .badge-role-student { background: var(--cms-accent-teal); color: #fff; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/campus.css') }}?v={{ filemtime(public_path('css/campus.css')) }}">
 </head>
-<body>
-    <div class="brand-strip"></div>
+<body class="campus-auth">
+    <div class="brand-strip fixed-top"></div>
 
-    <div class="login-card">
+    <div class="login-card animate-fade-up">
         <div class="login-header">
-            <i class="fa-solid fa-users text-warning display-5 mb-2"></i>
+            <i class="fa-solid fa-users text-warning fs-1 mb-2" aria-hidden="true"></i>
             <h4 class="fw-bold mb-1">Multiple Accounts Found</h4>
             <p class="text-white-50 small mb-0">This phone number is linked to more than one account. Choose which one to sign in as.</p>
         </div>

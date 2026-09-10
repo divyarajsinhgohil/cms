@@ -136,7 +136,18 @@ class AdmissionApplicationController extends Controller
             'student_id' => $student->id,
         ]);
 
-        return redirect()->back()->with('success', "Application approved! {$application->fullName()} admitted to {$course->name} with Enrollment No: {$enrollmentNo}");
+        // Automated WhatsApp Admission Approval Alert
+        $settings = \App\Models\SiteSetting::current();
+        if ($settings->whatsapp_auto_admission_approval && $application->mobile) {
+            app(\App\Services\WhatsAppService::class)->sendDirectMessage(
+                $application->mobile,
+                "Congratulations {$application->fullName()}! Your admission application for {$course->name} has been APPROVED! Enrollment No: {$student->enrollment_no}. Welcome to our College!",
+                $application->fullName(),
+                'admission_approval'
+            );
+        }
+
+        return redirect()->back()->with('success', "Application approved! {$application->fullName()} admitted to {$course->name} with Enrollment No: {$student->enrollment_no}");
     }
 
     /**

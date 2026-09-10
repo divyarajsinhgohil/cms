@@ -58,4 +58,18 @@ class User extends Authenticatable
     {
         return $this->hasOne(StaffProfile::class, 'user_id');
     }
+
+    public function cmsAlerts()
+    {
+        return $this->hasMany(CmsAlert::class);
+    }
+
+    public function unreadAlertCount(): int
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('cms_alerts')) {
+            return 0;
+        }
+
+        return $this->cmsAlerts()->where('status', 'sent')->count();
+    }
 }
