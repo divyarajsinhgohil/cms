@@ -404,8 +404,8 @@ class DatabaseSeeder extends Seeder
             'internal_marks' => 28,
             'external_marks' => 65,
             'total_marks' => 93,
-            'grade' => 'A+',
-            'grade_point' => 4.00,
+            'grade' => ExamMark::gradeFor(93)[0],
+            'grade_point' => ExamMark::gradeFor(93)[1],
         ]);
 
         ExamMark::create([
@@ -415,8 +415,8 @@ class DatabaseSeeder extends Seeder
             'internal_marks' => 25,
             'external_marks' => 60,
             'total_marks' => 85,
-            'grade' => 'A',
-            'grade_point' => 3.75,
+            'grade' => ExamMark::gradeFor(85)[0],
+            'grade_point' => ExamMark::gradeFor(85)[1],
         ]);
 
         // 12. Timetables

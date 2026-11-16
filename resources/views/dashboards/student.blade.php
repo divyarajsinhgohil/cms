@@ -56,7 +56,7 @@
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold text-uppercase">Cumulative CGPA</div>
-                    <div class="fs-2 fw-bold text-primary mt-1">{{ number_format($cgpa, 2) }} / 4.00</div>
+                    <div class="fs-2 fw-bold text-primary mt-1">{{ number_format($cgpa, 2) }} / 10.00</div>
                 </div>
                 <div class="stat-icon bg-primary-subtle text-primary">
                     <i class="fa-solid fa-award"></i>

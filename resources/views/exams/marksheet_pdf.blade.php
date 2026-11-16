@@ -86,7 +86,7 @@
             </td>
             <td width="50%" class="text-end">
                 <div class="muted">CUMULATIVE GRADE POINT AVERAGE (CGPA)</div>
-                <span class="cgpa">{{ number_format($cgpa, 2) }} / 4.00</span>
+                <span class="cgpa">{{ number_format($cgpa, 2) }} / 10.00</span>
             </td>
         </tr>
     </table>

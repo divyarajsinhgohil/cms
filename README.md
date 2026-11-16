@@ -58,7 +58,7 @@ There are three roles. Every action is checked on the **server** (route middlewa
 - **Sections**: split a class into A/B sections evenly and assign a class teacher.
 - **Attendance**: per subject, per day; low-attendance report; PDF export.
 - **Fees**: fee structure per course and semester, payment collection, receipt with PDF.
-- **Exams**: internal + external marks, grade and grade point, CGPA, marksheet PDF, result hard-copy collection register.
+- **Exams**: internal (40) + external (60) marks, grade and grade point on a 10-point scale, credit-weighted CGPA, marksheet PDF, result hard-copy collection register.
 - **Timetable**: manual slots, auto-generate, clash detection, date-specific changes.
 - **Study material and assignments**: upload (max 10 MB, file types checked), student submission, staff grading.
 - **Notices**: targeted by audience, course and semester, with priority.
@@ -67,6 +67,24 @@ There are three roles. Every action is checked on the **server** (route middlewa
 - **Certificates**: ID card and bonafide certificate (HTML + PDF).
 - **WhatsApp**: templates, campaigns (sent in the background by a queue worker), automatic alerts, delivery logs.
 - **Settings**: college name, logo, contact details, academic year, WhatsApp credentials.
+
+---
+
+## Grading scale
+
+Total marks are out of 100 (internal 40 + external 60). Defined in `app/Models/ExamMark.php`.
+
+| Total | Grade | Grade point |
+|---|---|---|
+| 90 - 100 | O | 10 |
+| 80 - 89 | A+ | 9 |
+| 70 - 79 | A | 8 |
+| 60 - 69 | B+ | 7 |
+| 50 - 59 | B | 6 |
+| 40 - 49 | C | 5 |
+| below 40 | F | 0 |
+
+**CGPA** = sum of (grade point x subject credits) / sum of subject credits.
 
 ---
 
@@ -144,6 +162,7 @@ The feature tests (`tests/Feature`) run against a fresh in-memory SQLite databas
 - WhatsApp token stored encrypted and never shown on the settings page
 - campaigns are queued, not sent inside the web request
 - every page loads for each role (smoke test)
+- 10-point grade bands and credit-weighted CGPA
 - the API: token login, role checks, rate limiting
 
 ---

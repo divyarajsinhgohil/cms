@@ -91,7 +91,7 @@
             </div>
             <div class="col-6 text-end">
                 <div class="text-uppercase text-muted fs-7 fw-bold">Cumulative Grade Point Average (CGPA)</div>
-                <div class="fs-2 fw-bold text-primary font-monospace">{{ number_format($cgpa, 2) }} / 4.00</div>
+                <div class="fs-2 fw-bold text-primary font-monospace">{{ number_format($cgpa, 2) }} / 10.00</div>
             </div>
         </div>
 

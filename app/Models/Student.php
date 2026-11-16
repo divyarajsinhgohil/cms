@@ -94,10 +94,20 @@ class Student extends Model
         return max(0, $totalFee - $this->calculateTotalPaidFee());
     }
 
+    /**
+     * Credit-weighted CGPA on the 10-point scale:
+     * sum(grade point x subject credits) / sum(subject credits).
+     * A subject with no credits set counts as 1 credit.
+     */
     public function calculateCGPA()
     {
-        $marks = $this->examMarks;
+        $marks = $this->examMarks()->with('subject')->get();
         if ($marks->isEmpty()) return 0.00;
-        return round($marks->avg('grade_point'), 2);
+
+        $credits = fn ($mark) => max(1, (int) optional($mark->subject)->credits);
+        $totalCredits = $marks->sum($credits);
+        $weighted = $marks->sum(fn ($mark) => $mark->grade_point * $credits($mark));
+
+        return round($weighted / $totalCredits, 2);
     }
 }

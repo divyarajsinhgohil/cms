@@ -80,7 +80,7 @@
             <div class="col-md-4">
                 <div class="stat-card">
                     <div class="text-muted small fw-bold text-uppercase">CGPA</div>
-                    <div class="fs-2 fw-bold text-primary mt-1">{{ $cgpa }}</div>
+                    <div class="fs-2 fw-bold text-primary mt-1">{{ number_format($cgpa, 2) }} / 10.00</div>
                 </div>
             </div>
             <div class="col-md-4">

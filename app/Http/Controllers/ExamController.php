@@ -89,14 +89,8 @@ class ExamController extends Controller
 
         $total = $request->internal_marks + $request->external_marks;
 
-        // Determine Grade & Grade Point
-        if ($total >= 90) { $grade = 'O'; $gp = 4.00; }
-        elseif ($total >= 80) { $grade = 'A+'; $gp = 3.80; }
-        elseif ($total >= 70) { $grade = 'A'; $gp = 3.50; }
-        elseif ($total >= 60) { $grade = 'B+'; $gp = 3.00; }
-        elseif ($total >= 50) { $grade = 'B'; $gp = 2.50; }
-        elseif ($total >= 40) { $grade = 'C'; $gp = 2.00; }
-        else { $grade = 'F'; $gp = 0.00; }
+        // Grade & grade point on the 10-point scale (see ExamMark::GRADE_SCALE)
+        [$grade, $gp] = ExamMark::gradeFor($total);
 
         ExamMark::updateOrCreate(
             [
