@@ -19,7 +19,7 @@ use App\Http\Controllers\Api\LeaveController;
 use App\Http\Controllers\Api\CertificateController;
 
 // Public
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 // Authenticated (Sanctum token) routes
 Route::middleware('auth:sanctum')->group(function () {

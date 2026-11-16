@@ -28,3 +28,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Scratch output, local tool state and personal documents
+/tmp
+/.claude/*.lock
+*.sql
+/*.pdf

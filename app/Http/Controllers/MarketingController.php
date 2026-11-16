@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendMarketingCampaignJob;
+
 use Illuminate\Http\Request;
 use App\Models\MarketingTemplate;
 use App\Models\MarketingCampaign;
@@ -44,80 +46,25 @@ class MarketingController extends Controller
         return redirect()->back()->with('success', 'Marketing template saved successfully!');
     }
 
-    public function launchCampaign(Request $request, WhatsAppService $whatsapp)
+    public function launchCampaign(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string',
+        $request->validate([
+            'name' => 'required|string|max:255',
             'template_id' => 'required|exists:marketing_templates,id',
             'channel' => 'required|in:WhatsApp,SMS',
         ]);
 
-        $template = MarketingTemplate::findOrFail($request->template_id);
-        $recipients = $this->activeStudentsWithPhone();
-
         $campaign = MarketingCampaign::create([
             'name' => $request->name,
-            'template_id' => $template->id,
-            'recipients_count' => $recipients->count(),
-            'status' => 'Completed',
-            'sent_at' => now(),
+            'template_id' => $request->template_id,
+            'recipients_count' => $this->activeStudentsWithPhone()->count(),
+            'status' => 'Queued',
         ]);
 
-        // Real sending is only wired up for WhatsApp, and only when both the
-        // account credentials AND an approved Meta template name are set. Every
-        // other combination (SMS, or WhatsApp without those) falls back to the
-        // existing simulated log so nothing breaks for an unconfigured account.
-        $canSendReal = $request->channel === 'WhatsApp'
-            && SiteSetting::current()->hasWhatsAppConfigured()
-            && filled($template->meta_template_name);
+        // Sending happens in the background (queue worker), so large lists cannot time out.
+        SendMarketingCampaignJob::dispatch($campaign->id, $request->channel);
 
-        $sentReal = 0;
-        $failedReal = 0;
-
-        foreach ($recipients as $student) {
-            $name = optional($student->user)->name;
-            $phone = optional($student->user)->phone;
-            $courseName = optional($student->course)->name ?? 'our Programs';
-
-            $personalizedMessage = str_replace(['{name}', '{course}'], [$name, $courseName], $template->content);
-
-            if ($canSendReal) {
-                $result = $whatsapp->sendTemplate(
-                    $phone,
-                    $template->meta_template_name,
-                    $template->meta_language ?: 'en_US',
-                    [$name, $courseName]
-                );
-
-                $result['success'] ? $sentReal++ : $failedReal++;
-
-                MarketingLog::create([
-                    'campaign_id' => $campaign->id,
-                    'recipient_phone' => $phone,
-                    'channel' => $request->channel,
-                    'message' => $personalizedMessage,
-                    'status' => $result['success'] ? 'Delivered' : 'Failed: '.substr((string) $result['error'], 0, 200),
-                ]);
-            } else {
-                // Simulated dispatch — no real gateway configured for this channel/template
-                MarketingLog::create([
-                    'campaign_id' => $campaign->id,
-                    'recipient_phone' => $phone,
-                    'channel' => $request->channel,
-                    'message' => $personalizedMessage,
-                    'status' => rand(0, 10) > 1 ? 'Delivered' : 'Sent',
-                ]);
-            }
-        }
-
-        if ($canSendReal) {
-            $summary = "Campaign '{$campaign->name}' sent via WhatsApp! {$sentReal} delivered";
-            $summary .= $failedReal > 0 ? ", {$failedReal} failed (see Gateway Delivery Logs)." : '.';
-
-            return redirect()->back()->with($failedReal > 0 && $sentReal === 0 ? 'error' : 'success', $summary);
-        }
-
-        return redirect()->back()->with('success', "Campaign '{$campaign->name}' launched successfully! Sent (simulated) ".$recipients->count().' messages.');
+        return redirect()->back()->with('success', "Campaign '{$campaign->name}' queued for {$campaign->recipients_count} students. Delivery results will appear in the logs below.");
     }
 
     /**

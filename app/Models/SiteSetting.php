@@ -15,6 +15,8 @@ class SiteSetting extends Model
     protected function casts(): array
     {
         return [
+            // Stored encrypted with APP_KEY so a database dump does not leak the Meta API token
+            'whatsapp_access_token' => 'encrypted',
             'whatsapp_auto_fee_receipt' => 'boolean',
             'whatsapp_auto_attendance_alert' => 'boolean',
             'whatsapp_auto_exam_result' => 'boolean',

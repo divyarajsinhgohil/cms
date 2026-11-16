@@ -44,7 +44,7 @@
     </div>
 
     <div class="cert-card">
-        <!-- Header — Same Logo & Style as FeesReceipt.pdf -->
+        <!-- Header — Same Logo & Style as the official fee receipt -->
         <div class="d-flex justify-content-between align-items-center border-bottom pb-4 mb-4">
             <div class="d-flex align-items-center gap-3">
                 @if(!empty($siteSettings?->logo_url))

@@ -140,7 +140,7 @@
                             @elseif(str_starts_with($log->status, 'Failed'))
                                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="{{ $log->status }}"><i class="fa-solid fa-circle-xmark me-1"></i> Failed</span>
                             @else
-                                <span class="badge bg-info-subtle text-info border border-info-subtle"><i class="fa-solid fa-paper-plane me-1"></i> Sent</span>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle"><i class="fa-solid fa-paper-plane me-1"></i> {{ $log->status }}</span>
                             @endif
                         </td>
                     </tr>

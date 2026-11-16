@@ -265,6 +265,11 @@ class DatabaseSeeder extends Seeder
         // 7. Admission Applications
         AdmissionApplication::create([
             'first_name' => 'David',
+            'father_name' => 'Robert Miller',
+            'mother_name' => 'Linda Miller',
+            'aadhar_number' => '1111 2222 3301',
+            'home_address' => 'Near Saurashtra University, Rajkot',
+            'permanent_address' => 'Near Saurashtra University, Rajkot',
             'last_name' => 'Miller',
             'surname' => 'Miller',
             'email' => 'david@gmail.com',
@@ -276,6 +281,11 @@ class DatabaseSeeder extends Seeder
 
         AdmissionApplication::create([
             'first_name' => 'Priya',
+            'father_name' => 'Suresh Nair',
+            'mother_name' => 'Lakshmi Nair',
+            'aadhar_number' => '1111 2222 3302',
+            'home_address' => 'Near Saurashtra University, Rajkot',
+            'permanent_address' => 'Near Saurashtra University, Rajkot',
             'last_name' => 'Nair',
             'surname' => 'Nair',
             'email' => 'priya@nair.com',
@@ -287,6 +297,11 @@ class DatabaseSeeder extends Seeder
 
         AdmissionApplication::create([
             'first_name' => 'Kevin',
+            'father_name' => 'Mark Peterson',
+            'mother_name' => 'Susan Peterson',
+            'aadhar_number' => '1111 2222 3303',
+            'home_address' => 'Near Saurashtra University, Rajkot',
+            'permanent_address' => 'Near Saurashtra University, Rajkot',
             'last_name' => 'Peterson',
             'surname' => 'Peterson',
             'email' => 'kevin@yahoo.com',

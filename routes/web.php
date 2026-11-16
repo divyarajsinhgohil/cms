@@ -38,15 +38,14 @@ Route::get('/home', [PublicController::class, 'home'])->name('public.home');
 Route::get('/locale/{locale}', [PublicController::class, 'setLocale'])->name('locale.switch');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::get('/login/choose', [AuthController::class, 'showChooseAccount'])->name('login.choose');
-Route::post('/login/choose/{user}', [AuthController::class, 'chooseAccount'])->name('login.choose.select');
-Route::get('/quick-login/{role}', [AuthController::class, 'quickLogin'])->name('quick.login');
+Route::post('/login/choose/{user}', [AuthController::class, 'chooseAccount'])->middleware('throttle:login')->name('login.choose.select');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Public Admission Application Form (no login required)
 Route::get('/apply', [AdmissionApplicationController::class, 'create'])->name('admission-applications.create');
-Route::post('/apply', [AdmissionApplicationController::class, 'store'])->name('admission-applications.store');
+Route::post('/apply', [AdmissionApplicationController::class, 'store'])->middleware('throttle:10,1')->name('admission-applications.store');
 
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
@@ -55,32 +54,39 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Academic Master & Management CRUD
-    Route::get('/academics/departments', [AcademicController::class, 'departmentsIndex'])->name('academics.departments');
-    Route::post('/academics/departments', [AcademicController::class, 'storeDepartment'])->name('academics.departments.store');
-    Route::put('/academics/departments/{department}', [AcademicController::class, 'updateDepartment'])->name('academics.departments.update');
-    Route::delete('/academics/departments/{department}', [AcademicController::class, 'destroyDepartment'])->name('academics.departments.destroy');
-    Route::post('/academics/departments/bulk-destroy', [AcademicController::class, 'destroyDepartmentsBulk'])->name('academics.departments.bulk_destroy');
+    // Academic Master & Management CRUD (management only)
+    Route::middleware('role:management')->group(function () {
+        Route::get('/academics/departments', [AcademicController::class, 'departmentsIndex'])->name('academics.departments');
+        Route::post('/academics/departments', [AcademicController::class, 'storeDepartment'])->name('academics.departments.store');
+        Route::put('/academics/departments/{department}', [AcademicController::class, 'updateDepartment'])->name('academics.departments.update');
+        Route::delete('/academics/departments/{department}', [AcademicController::class, 'destroyDepartment'])->name('academics.departments.destroy');
+        Route::post('/academics/departments/bulk-destroy', [AcademicController::class, 'destroyDepartmentsBulk'])->name('academics.departments.bulk_destroy');
 
-    Route::get('/academics/courses', [AcademicController::class, 'coursesIndex'])->name('academics.courses');
-    Route::post('/academics/courses', [AcademicController::class, 'storeCourse'])->name('academics.courses.store');
-    Route::put('/academics/courses/{course}', [AcademicController::class, 'updateCourse'])->name('academics.courses.update');
-    Route::delete('/academics/courses/{course}', [AcademicController::class, 'destroyCourse'])->name('academics.courses.destroy');
+        Route::get('/academics/courses', [AcademicController::class, 'coursesIndex'])->name('academics.courses');
+        Route::post('/academics/courses', [AcademicController::class, 'storeCourse'])->name('academics.courses.store');
+        Route::put('/academics/courses/{course}', [AcademicController::class, 'updateCourse'])->name('academics.courses.update');
+        Route::delete('/academics/courses/{course}', [AcademicController::class, 'destroyCourse'])->name('academics.courses.destroy');
 
-    Route::get('/academics/subjects', [AcademicController::class, 'subjectsIndex'])->name('academics.subjects');
-    Route::post('/academics/subjects', [AcademicController::class, 'storeSubject'])->name('academics.subjects.store');
-    Route::put('/academics/subjects/{subject}', [AcademicController::class, 'updateSubject'])->name('academics.subjects.update');
-    Route::delete('/academics/subjects/{subject}', [AcademicController::class, 'destroySubject'])->name('academics.subjects.destroy');
+        Route::get('/academics/subjects', [AcademicController::class, 'subjectsIndex'])->name('academics.subjects');
+        Route::post('/academics/subjects', [AcademicController::class, 'storeSubject'])->name('academics.subjects.store');
+        Route::put('/academics/subjects/{subject}', [AcademicController::class, 'updateSubject'])->name('academics.subjects.update');
+        Route::delete('/academics/subjects/{subject}', [AcademicController::class, 'destroySubject'])->name('academics.subjects.destroy');
+    });
 
     // Semester-Wise Syllabus & Faculty Portal
     Route::get('/academics/my-syllabus', [AcademicController::class, 'mySyllabus'])->name('academics.my_syllabus');
-    Route::get('/academics/syllabi', [AcademicController::class, 'syllabiIndex'])->name('academics.syllabi');
-    Route::post('/academics/syllabi', [AcademicController::class, 'storeSyllabus'])->name('academics.syllabi.store');
+    Route::middleware('role:management,staff')->group(function () {
+        Route::get('/academics/syllabi', [AcademicController::class, 'syllabiIndex'])->name('academics.syllabi');
+        Route::post('/academics/syllabi', [AcademicController::class, 'storeSyllabus'])->name('academics.syllabi.store');
+    });
 
-    Route::get('/academics/staff', [StaffController::class, 'index'])->name('academics.staff');
-    Route::post('/academics/staff', [StaffController::class, 'store'])->name('academics.staff.store');
-    Route::put('/academics/staff/{staff}', [StaffController::class, 'update'])->name('academics.staff.update');
-    Route::delete('/academics/staff/{staff}', [StaffController::class, 'destroy'])->name('academics.staff.destroy');
+    // Staff records include salaries, so only management can see or change them
+    Route::middleware('role:management')->group(function () {
+        Route::get('/academics/staff', [StaffController::class, 'index'])->name('academics.staff');
+        Route::post('/academics/staff', [StaffController::class, 'store'])->name('academics.staff.store');
+        Route::put('/academics/staff/{staff}', [StaffController::class, 'update'])->name('academics.staff.update');
+        Route::delete('/academics/staff/{staff}', [StaffController::class, 'destroy'])->name('academics.staff.destroy');
+    });
 
     // Online Admission Application Review (management only)
     Route::middleware('role:management')->group(function () {
@@ -89,10 +95,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/admission-applications/{application}/reject', [AdmissionApplicationController::class, 'reject'])->name('admission-applications.reject');
     });
 
-    // Marketing (WhatsApp / SMS outreach to students)
-    Route::get('/marketing', [MarketingController::class, 'index'])->name('marketing.index');
-    Route::post('/marketing/template', [MarketingController::class, 'storeTemplate'])->name('marketing.template');
-    Route::post('/marketing/campaign', [MarketingController::class, 'launchCampaign'])->name('marketing.campaign');
+    // Marketing (WhatsApp / SMS outreach to students) - management only
+    Route::middleware('role:management')->group(function () {
+        Route::get('/marketing', [MarketingController::class, 'index'])->name('marketing.index');
+        Route::post('/marketing/template', [MarketingController::class, 'storeTemplate'])->name('marketing.template');
+        Route::post('/marketing/campaign', [MarketingController::class, 'launchCampaign'])->name('marketing.campaign');
+    });
 
     // Student Directory & Admissions (management & teachers)
     Route::middleware('role:management,staff')->group(function () {
@@ -123,21 +131,24 @@ Route::middleware(['auth'])->group(function () {
 
     // Hostel Facilities & Outpasses
     Route::get('/hostels', [HostelController::class, 'index'])->name('hostels.index');
-    Route::post('/hostels/room', [HostelController::class, 'storeRoom'])->name('hostels.room.store');
-    Route::post('/hostels/allot', [HostelController::class, 'allotRoom'])->name('hostels.allot');
-    Route::post('/hostels/outpass', [HostelController::class, 'storeOutpass'])->name('hostels.outpass.store');
+    Route::middleware('role:management')->group(function () {
+        Route::post('/hostels/room', [HostelController::class, 'storeRoom'])->name('hostels.room.store');
+        Route::post('/hostels/allot', [HostelController::class, 'allotRoom'])->name('hostels.allot');
+    });
+    Route::post('/hostels/outpass', [HostelController::class, 'storeOutpass'])->middleware('role:management,staff')->name('hostels.outpass.store');
 
     // Complaints & Grievances
     Route::get('/complaints', [GrievanceController::class, 'index'])->name('complaints.index');
     Route::post('/complaints', [GrievanceController::class, 'store'])->name('complaints.store');
-    Route::put('/complaints/{complaint}/status', [GrievanceController::class, 'updateStatus'])->name('complaints.status');
+    Route::put('/complaints/{complaint}/status', [GrievanceController::class, 'updateStatus'])->middleware('role:management')->name('complaints.status');
 
     // Leave Management (faculty applying to admin — not a student-facing feature)
     Route::middleware('role:management,staff')->group(function () {
         Route::get('/leaves', [LeaveController::class, 'index'])->name('leaves.index');
         Route::post('/leaves', [LeaveController::class, 'store'])->name('leaves.store');
-        Route::put('/leaves/{leave}/status', [LeaveController::class, 'updateStatus'])->name('leaves.status');
     });
+    // Only management approves leave - otherwise staff could approve their own requests
+    Route::put('/leaves/{leave}/status', [LeaveController::class, 'updateStatus'])->middleware('role:management')->name('leaves.status');
 
     // Printable Certificates & ID Cards
     Route::get('/certificates', [CertificateController::class, 'index'])->name('certificates.index');
@@ -164,7 +175,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Exams & CGPA
     Route::get('/exams', [ExamController::class, 'index'])->name('exams.index');
-    Route::post('/exams/store', [ExamController::class, 'storeMarks'])->name('exams.store');
+    Route::post('/exams/store', [ExamController::class, 'storeMarks'])->middleware('role:management,staff')->name('exams.store');
     Route::get('/exams/marksheet/{student}', [ExamController::class, 'viewMarksheet'])->name('exams.marksheet');
     Route::get('/exams/marksheet/{student}/pdf', [ExamController::class, 'downloadMarksheetPdf'])->name('exams.marksheet.pdf');
 
@@ -185,13 +196,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Materials
     Route::get('/materials', [MaterialController::class, 'index'])->name('materials.index');
-    Route::post('/materials', [MaterialController::class, 'store'])->name('materials.store');
-    Route::post('/materials/{material}/submit', [MaterialController::class, 'submitAssignment'])->name('materials.submit');
-    Route::post('/materials/submission/{submission}/grade', [MaterialController::class, 'gradeSubmission'])->name('materials.grade');
+    Route::post('/materials', [MaterialController::class, 'store'])->middleware('role:management,staff')->name('materials.store');
+    Route::post('/materials/{material}/submit', [MaterialController::class, 'submitAssignment'])->middleware('role:student')->name('materials.submit');
+    Route::post('/materials/submission/{submission}/grade', [MaterialController::class, 'gradeSubmission'])->middleware('role:management,staff')->name('materials.grade');
 
     // Notices
     Route::get('/notices', [NoticeController::class, 'index'])->name('notices.index');
-    Route::post('/notices', [NoticeController::class, 'store'])->name('notices.store');
+    Route::post('/notices', [NoticeController::class, 'store'])->middleware('role:management,staff')->name('notices.store');
 
     // Queued alert notifications
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
@@ -213,7 +224,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:management,staff')->group(function () {
         Route::get('/whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');
         Route::post('/whatsapp/send-direct', [WhatsAppController::class, 'sendDirect'])->name('whatsapp.send_direct');
-        Route::post('/whatsapp/triggers', [WhatsAppController::class, 'updateTriggers'])->name('whatsapp.triggers');
+        Route::post('/whatsapp/triggers', [WhatsAppController::class, 'updateTriggers'])->middleware('role:management')->name('whatsapp.triggers');
         Route::get('/whatsapp/logs', [WhatsAppController::class, 'logs'])->name('whatsapp.logs');
         Route::get('/whatsapp/test-connection', [WhatsAppController::class, 'testConnection'])->name('whatsapp.test_connection');
     });

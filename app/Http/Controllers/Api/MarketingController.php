@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Jobs\SendMarketingCampaignJob;
+
 use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Models\MarketingCampaign;
@@ -41,45 +43,28 @@ class MarketingController extends Controller
 
     public function launchCampaign(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string',
+        $request->validate([
+            'name' => 'required|string|max:255',
             'template_id' => 'required|exists:marketing_templates,id',
             'channel' => 'required|in:WhatsApp,SMS',
         ]);
 
-        $template = MarketingTemplate::findOrFail($request->template_id);
-        $recipients = Student::where('status', 'Active')->with(['user', 'course'])->get()
+        $recipients = Student::where('status', 'Active')->with('user')->get()
             ->filter(fn ($s) => filled(optional($s->user)->phone))
-            ->values();
+            ->count();
 
         $campaign = MarketingCampaign::create([
             'name' => $request->name,
-            'template_id' => $template->id,
-            'recipients_count' => $recipients->count(),
-            'status' => 'Completed',
-            'sent_at' => now(),
+            'template_id' => $request->template_id,
+            'recipients_count' => $recipients,
+            'status' => 'Queued',
         ]);
 
-        // Simulated dispatch — live WhatsApp/SMS gateway integration is coming soon.
-        foreach ($recipients as $student) {
-            $personalizedMessage = str_replace(
-                ['{name}', '{course}'],
-                [optional($student->user)->name, optional($student->course)->name ?? 'our Programs'],
-                $template->content
-            );
-
-            MarketingLog::create([
-                'campaign_id' => $campaign->id,
-                'recipient_phone' => optional($student->user)->phone,
-                'channel' => $request->channel,
-                'message' => $personalizedMessage,
-                'status' => rand(0, 10) > 1 ? 'Delivered' : 'Sent',
-            ]);
-        }
+        SendMarketingCampaignJob::dispatch($campaign->id, $request->channel);
 
         return response()->json([
-            'message' => "Campaign '{$campaign->name}' launched successfully! Sent {$recipients->count()} messages (simulated).",
+            'message' => "Campaign '{$campaign->name}' queued for {$recipients} students.",
             'data' => $campaign,
-        ], 201);
+        ], 202);
     }
 }

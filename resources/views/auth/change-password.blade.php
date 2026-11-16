@@ -57,7 +57,7 @@
                     <label class="form-label fw-semibold small text-muted">Enter New Password</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light text-muted border-end-0"><i class="fa-solid fa-key"></i></span>
-                        <input type="password" name="password" class="form-control bg-light border-start-0" placeholder="Minimum 6 characters" required>
+                        <input type="password" name="password" class="form-control bg-light border-start-0" placeholder="Min 8 characters, letters and numbers" required>
                     </div>
                     @error('password') <span class="text-danger fs-7 mt-1 d-block">{{ $message }}</span> @enderror
                 </div>

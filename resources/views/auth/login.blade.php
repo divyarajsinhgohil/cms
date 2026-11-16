@@ -36,7 +36,8 @@
             </div>
         <div id="login-form">
 
-            <!-- Quick Demo Login Shortcuts -->
+            <!-- Quick Demo Login Shortcuts (only on a local/dev install, never in production) -->
+            @if(app()->environment('local'))
             <div class="mb-4">
                 <div class="demo-roles-label"><i class="fa-solid fa-bolt text-warning me-1"></i> Explore a demo workspace</div>
                 <div class="d-flex justify-content-center flex-wrap gap-2">
@@ -51,6 +52,7 @@
                     </button>
                 </div>
             </div>
+            @endif
 
             @if(session('error'))
                 <div class="alert alert-danger border-0 shadow-sm mb-4 fs-7 py-2.5 px-3 rounded-3" role="alert">
@@ -67,10 +69,10 @@
             <form action="{{ route('login') }}" method="POST" class="mb-3">
                 @csrf
                 <div class="mb-3">
-                    <label for="login_input" class="form-label fw-bold small text-secondary mb-1.5">Email, Mobile Number, or Full Name</label>
+                    <label for="login_input" class="form-label fw-bold small text-secondary mb-1.5">Email or Mobile Number</label>
                     <div class="input-group input-group-custom">
                         <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
-                        <input type="text" id="login_input" name="login" class="form-control" placeholder="Enter your email, mobile or name" autocomplete="username" required value="{{ old('login') }}">
+                        <input type="text" id="login_input" name="login" class="form-control" placeholder="Enter your email or mobile number" autocomplete="username" required value="{{ old('login') }}">
                     </div>
                     @error('login') <span class="text-danger fs-7 mt-1.5 d-block fw-semibold">{{ $message }}</span> @enderror
                 </div>

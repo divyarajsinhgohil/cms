@@ -44,7 +44,7 @@ class LeaveController extends Controller
 
     public function updateStatus(Request $request, LeaveRequest $leave)
     {
-        $request->validate(['status' => 'required|string']);
+        $request->validate(['status' => 'required|in:Pending,Approved,Rejected']);
         $leave->update(['status' => $request->status]);
 
         return response()->json(['message' => "Leave application #{$leave->id} set to {$request->status}!", 'data' => $leave]);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -17,12 +18,14 @@ class AuthController extends Controller
             'device_name' => ['nullable', 'string'],
         ]);
 
+        // Same rules as the web login: email or phone only. A phone number can be shared
+        // by several accounts, so pick the one whose password matches.
         $user = User::where('email', $request->login)
             ->orWhere('phone', $request->login)
-            ->orWhereRaw('LOWER(name) = ?', [strtolower($request->login)])
-            ->first();
+            ->get()
+            ->first(fn ($u) => Hash::check($request->password, $u->password));
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (! $user) {
             return response()->json(['message' => 'The provided credentials do not match our records.'], 422);
         }
 
@@ -54,7 +57,7 @@ class AuthController extends Controller
     public function changePassword(Request $request)
     {
         $request->validate([
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->numbers()],
         ]);
 
         $user = $request->user();

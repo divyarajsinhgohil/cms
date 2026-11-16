@@ -7,15 +7,19 @@
         <p class="text-muted mb-0">Manage hostel buildings, room capacity, student room allotments, and home leave outpasses.</p>
     </div>
     <div class="d-flex gap-2">
+        @if(Auth::user()->isManagement())
         <button class="btn btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addRoomModal">
             <i class="fa-solid fa-hotel me-1"></i> Add Hostel Room
         </button>
         <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#allotRoomModal">
             <i class="fa-solid fa-key me-1"></i> Allot Room
         </button>
+        @endif
+        @unless(Auth::user()->isStudent())
         <button class="btn btn-warning text-dark shadow-sm" data-bs-toggle="modal" data-bs-target="#outpassModal">
             <i class="fa-solid fa-door-open me-1"></i> Issue Outpass
         </button>
+        @endunless
     </div>
 </div>
 

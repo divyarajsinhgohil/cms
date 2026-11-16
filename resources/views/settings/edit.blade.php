@@ -97,7 +97,7 @@
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label fw-bold">Permanent Access Token</label>
-                            <input type="password" name="whatsapp_access_token" class="form-control font-monospace" value="{{ old('whatsapp_access_token', $settings->whatsapp_access_token) }}" placeholder="EAAG...">
+                            <input type="password" name="whatsapp_access_token" class="form-control font-monospace" value="" autocomplete="off" placeholder="{{ filled($settings->whatsapp_access_token) ? 'Saved (hidden) - leave blank to keep it' : 'EAAG...' }}">
                             <div class="form-text fs-7">From Meta Business Settings → System Users → generate a permanent token with whatsapp_business_messaging permission.</div>
                         </div>
                         <div class="col-md-6">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use App\Models\User;
 
 class AuthController extends Controller
@@ -30,21 +31,14 @@ class AuthController extends Controller
         $loginInput = $request->input('login');
         $password = $request->input('password');
 
-        $demoAliases = [
-            'faculty@cms.edu' => 'rajesh.varma@cms.edu',
-            'student@cms.edu' => 'pooja.joshi@cms.edu',
-        ];
-        if (isset($demoAliases[strtolower(trim($loginInput))])) {
-            $loginInput = $demoAliases[strtolower(trim($loginInput))];
-        }
+        $loginInput = trim($loginInput);
 
-        // Check if user exists by Email, Phone Number, OR Name. A phone number (or name)
-        // can be shared by more than one account (e.g. siblings using a parent's number,
-        // or two staff members with the same name), so every matching account whose
-        // password checks out is a valid candidate.
+        // Log in by Email or Phone Number. (Login by name was removed: names are public
+        // and easy to guess, which made password guessing much easier.) A phone number
+        // can be shared by more than one account (e.g. siblings using a parent's number),
+        // so every matching account whose password checks out is a valid candidate.
         $matches = User::where('email', $loginInput)
                     ->orWhere('phone', $loginInput)
-                    ->orWhereRaw('LOWER(name) = ?', [strtolower($loginInput)])
                     ->get()
                     ->filter(fn ($u) => Hash::check($password, $u->password))
                     // A student marked as "Left" keeps their historical records but
@@ -119,7 +113,7 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->numbers()],
         ]);
 
         $user = Auth::user();
@@ -128,30 +122,6 @@ class AuthController extends Controller
         $user->save();
 
         return redirect()->route('dashboard')->with('success', 'Your password has been updated successfully! Welcome to your dashboard.');
-    }
-
-    public function quickLogin(Request $request, string $role)
-    {
-        $roleMap = [
-            'management' => 'management',
-            'admin' => 'management',
-            'staff' => 'staff',
-            'faculty' => 'staff',
-            'teacher' => 'staff',
-            'student' => 'student',
-        ];
-
-        $targetRole = $roleMap[strtolower($role)] ?? null;
-        if (! $targetRole) {
-            return redirect()->route('login')->with('error', "Invalid role requested for quick login: {$role}");
-        }
-
-        $user = User::where('role', $targetRole)->first();
-        if (! $user) {
-            return redirect()->route('login')->with('error', "No user account found for {$targetRole} role.");
-        }
-
-        return $this->completeLogin($request, $user);
     }
 
     public function logout(Request $request)

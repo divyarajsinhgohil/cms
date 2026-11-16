@@ -30,6 +30,12 @@ class SettingController extends Controller
             'whatsapp_business_account_id' => 'nullable|string|max:100',
         ]);
 
+        // The token is never sent back to the browser, so an empty field means
+        // "keep the saved token", not "delete it".
+        if (blank($validated['whatsapp_access_token'] ?? null)) {
+            unset($validated['whatsapp_access_token']);
+        }
+
         SiteSetting::current()->update($validated);
 
         return redirect()->back()->with('success', 'Website settings updated successfully!');

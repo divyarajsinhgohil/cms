@@ -42,7 +42,7 @@ class GrievanceController extends Controller
 
     public function updateStatus(Request $request, Complaint $complaint)
     {
-        $request->validate(['status' => 'required|string']);
+        $request->validate(['status' => 'required|in:Open,In Progress,Resolved']);
         $complaint->update(['status' => $request->status]);
 
         return response()->json(['message' => "Ticket #{$complaint->id} status updated to {$request->status}!", 'data' => $complaint]);
